@@ -10,7 +10,7 @@ import '../index.css'
 
 const api = createApi(import.meta.env)
 const queryClient = createQueryClient(() => useAuthStore.getState().clear())
-const router = createBrowserRouter(routes)
+const router = createBrowserRouter(routes, { basename: import.meta.env.BASE_URL })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

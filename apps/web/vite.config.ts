@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
   // QPAY_* нь VITE_ угтваргүй тул клиент bundle-д хэзээ ч орохгүй, зөвхөн серверийн middleware уншина
   const qpayEnv = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), 'QPAY_')
   return {
+    // GitHub Pages дээр /<repo>/ дэд замаар үйлчилнэ
+    base: process.env.BASE_PATH ?? '/',
     plugins: [react(), tailwindcss(), qpayPlugin(qpayEnv)],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
