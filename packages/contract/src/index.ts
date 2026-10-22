@@ -10,8 +10,10 @@ export interface Lesson {
   title: string
   durationSec: number
   isPreview: boolean
-  /** Зөвхөн preview эсвэл худалдаж авсан хичээлд ирнэ */
+  /** Зөвхөн preview эсвэл худалдаж авсан хичээлд ирнэ (mock) */
   videoUrl?: string
+  /** YouTube-ийн 11 тэмдэгтийн ID. Зөвхөн preview эсвэл худалдаж авсан хичээлд ирнэ (backend) */
+  youtubeId?: string
 }
 
 export interface Section {

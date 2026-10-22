@@ -11,23 +11,38 @@ declare module 'fastify' {
 }
 
 const BEARER = /^Bearer (\S+)$/
+const EXPIRED = 'Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү'
 
-/**
- * `Authorization: Bearer <token>`-ийг шалгаж `req.user`-ийг тавина.
- * Хэрэглэгч устгагдсан бол токен хүчинтэй байсан ч 401.
- */
-export async function requireAuth(req: FastifyRequest, _reply: FastifyReply): Promise<void> {
+type TokenResult = { status: 'none' } | { status: 'invalid' } | { status: 'ok'; user: User }
+
+async function readToken(req: FastifyRequest): Promise<TokenResult> {
   const token = BEARER.exec(req.headers.authorization ?? '')?.[1]
-  if (!token) throw unauthorized()
+  if (!token) return { status: 'none' }
 
   const userId = await verifyToken(token, req.server.config.JWT_SECRET)
-  if (!userId) throw unauthorized('Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү')
+  if (!userId) return { status: 'invalid' }
 
   const user = await req.server.prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, name: true, email: true },
   })
-  if (!user) throw unauthorized('Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү')
+  // Хэрэглэгч устгагдсан бол токен хүчинтэй байсан ч хүчингүй
+  return user ? { status: 'ok', user } : { status: 'invalid' }
+}
 
-  req.user = user
+/** `Authorization: Bearer <token>`-ийг шалгаж `req.user`-ийг тавина. Үгүй бол 401. */
+export async function requireAuth(req: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  const r = await readToken(req)
+  if (r.status === 'none') throw unauthorized()
+  if (r.status === 'invalid') throw unauthorized(EXPIRED)
+  req.user = r.user
+}
+
+/**
+ * Нийтийн хуудсанд: токен хүчинтэй бол `req.user`-ийг тавина, үгүй бол нэвтрээгүй мэт үргэлжилнэ.
+ * Хугацаа нь дууссан токентой хэрэглэгч каталогоо үзэх боломжгүй болох ёсгүй.
+ */
+export async function optionalAuth(req: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  const r = await readToken(req)
+  req.user = r.status === 'ok' ? r.user : null
 }
