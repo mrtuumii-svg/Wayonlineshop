@@ -1,4 +1,5 @@
 import type {
+  AuthResult,
   Course,
   CourseFilter,
   CourseSummary,
@@ -10,10 +11,7 @@ import type {
   User,
 } from './types'
 
-export interface AuthResult {
-  user: User
-  token: string
-}
+export type { AuthResult }
 
 /** Backend-тэй харилцах цорын ганц гэрээ. UI зөвхөн үүгээр дамжина. */
 export interface ApiClient {

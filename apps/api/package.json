@@ -7,18 +7,30 @@
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.1",
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.2.1",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "@way/contract": "*",
+    "argon2": "^0.45.1",
     "fastify": "^5.12.7",
+    "jose": "^6.2.13",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
+    "prisma": "^7.10.1",
     "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "vitest": "^5.0.4"
