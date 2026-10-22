@@ -6,6 +6,7 @@ import type { Config } from './config.js'
 import { createPrisma, type PrismaClient } from './db.js'
 import { registerErrorHandler } from './errorHandler.js'
 import { authRoutes } from './routes/auth.js'
+import { courseRoutes } from './routes/courses.js'
 import { healthRoutes } from './routes/health.js'
 
 declare module 'fastify' {
@@ -45,6 +46,7 @@ export async function buildApp(config: Config, deps: { prisma?: PrismaClient } =
   registerErrorHandler(app)
   await app.register(healthRoutes)
   await app.register(authRoutes)
+  await app.register(courseRoutes)
 
   return app
 }
