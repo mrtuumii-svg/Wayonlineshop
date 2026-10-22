@@ -10,6 +10,10 @@ export const testConfig = (over: Partial<Config> = {}): Config => ({
   DATABASE_URL: testDatabaseUrl,
   JWT_SECRET: 'test-secret-that-is-long-enough-32',
   corsOrigins: ['http://localhost:5173'],
+  PAYMENT_PROVIDER: 'fake',
+  PAYMENT_WEBHOOK_SECRET: 'test-webhook-secret-long-enough-32ch',
+  // Тестэд автомат төлбөр унтраалттай — webhook-ийг тест өөрөө дуудна
+  FAKE_PAY_AFTER_MS: 0,
   ...over,
 })
 
