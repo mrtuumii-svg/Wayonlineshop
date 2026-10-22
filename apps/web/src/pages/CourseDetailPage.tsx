@@ -49,10 +49,10 @@ export function CourseDetailPage() {
           <p className="mt-3 text-slate-600">{course.description}</p>
         </div>
 
-        {preview?.videoUrl && (
+        {preview?.youtubeId && (
           <div className="space-y-2">
             <h2 className="font-semibold">Урьдчилан үзэх: {preview.title}</h2>
-            <VideoPlayer src={preview.videoUrl} title={preview.title} />
+            <VideoPlayer youtubeId={preview.youtubeId} title={preview.title} />
           </div>
         )}
 
@@ -61,7 +61,7 @@ export function CourseDetailPage() {
           <CurriculumList
             course={course}
             renderAction={(lesson) =>
-              lesson.isPreview && lesson.videoUrl ? (
+              lesson.isPreview && lesson.youtubeId ? (
                 <button type="button" className="text-brand-600 hover:underline" onClick={() => setPreview(lesson)}>
                   Урьдчилан үзэх
                 </button>

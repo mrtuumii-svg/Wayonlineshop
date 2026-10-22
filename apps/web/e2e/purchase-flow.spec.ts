@@ -21,7 +21,7 @@ test('browse → buy → watch → progress', async ({ page }) => {
   await expect(page).toHaveURL(/\/my-courses$/)
   await expect(page.getByText('Явц: 0%')).toBeVisible()
   await page.getByRole('link', { name: 'Үргэлжлүүлэх' }).click()
-  await expect(page.locator('video')).toBeVisible()
+  await expect(page.locator('iframe[src*="youtube-nocookie.com/embed/"]')).toBeVisible()
   await page.getByRole('button', { name: 'Дууссан гэж тэмдэглэх' }).click()
   await expect(page.getByRole('button', { name: 'Дууссан ✓' })).toBeDisabled()
   await page.goto('/my-courses')

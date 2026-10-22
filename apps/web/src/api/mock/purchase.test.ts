@@ -110,10 +110,10 @@ test('purchases are per user', async () => {
   expect(await api().getMyCourses()).toEqual([])
 })
 
-test('owned course exposes all videoUrls', async () => {
+test('owned course exposes all youtubeIds', async () => {
   await buy(['c1'])
   const lessons = (await api().getCourse('react-ekhlel')).sections.flatMap((s) => s.lessons)
-  expect(lessons.every((l) => l.videoUrl)).toBe(true)
+  expect(lessons.every((l) => l.youtubeId)).toBe(true)
 })
 
 test('progress: FORBIDDEN when not owned, idempotent mark when owned', async () => {

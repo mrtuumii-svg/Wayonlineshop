@@ -23,7 +23,7 @@ test('after paying, the learn page shows the video without a stale course', asyn
   await waitFor(() => expect(router.state.location.pathname).toBe('/my-courses'))
   await act(() => router.navigate('/learn/react-ekhlel/l2'))
   await screen.findByRole('heading', { name: 'Орчин бэлтгэх' })
-  expect(document.querySelector('video')).not.toBeNull()
+  expect(document.querySelector('iframe[src*="youtube-nocookie.com/embed/"]')).not.toBeNull()
 })
 
 test('cart shows error state with retry when courses fail to load', async () => {

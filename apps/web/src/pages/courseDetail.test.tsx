@@ -20,7 +20,7 @@ test('add to cart switches button to go-to-cart link', async () => {
 test('preview opens a video player', async () => {
   const { user } = renderApp('/courses/react-ekhlel')
   await user.click(await screen.findByRole('button', { name: 'Урьдчилан үзэх' }))
-  expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('flower.mp4'))
+  expect(document.querySelector('iframe')).toHaveAttribute('src', expect.stringContaining('youtube-nocookie.com/embed/aqz-KE-bpKQ'))
 })
 
 test('owned course shows watch link instead of add-to-cart', async () => {
