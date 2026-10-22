@@ -1,0 +1,148 @@
+// Way Academy — өгөгдлийн схем.
+// Үнэ бүхэлдээ төгрөгөөр (Int). Эрхийг Order-оор бус Enrollment-ээр шалгана.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String           @id @default(uuid())
+  name         String
+  /// Хадгалахаас өмнө trim().toLowerCase() хийгдэнэ
+  email        String           @unique
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  orders       Order[]
+  enrollments  Enrollment[]
+  progress     LessonProgress[]
+}
+
+model Instructor {
+  id      String   @id @default(uuid())
+  name    String
+  avatar  String
+  bio     String
+  courses Course[]
+}
+
+model Course {
+  id           String       @id @default(uuid())
+  slug         String       @unique
+  title        String
+  description  String
+  /// Төгрөгөөр, бүхэл тоо
+  price        Int
+  thumbnail    String
+  category     String
+  level        Level
+  instructorId String
+  instructor   Instructor   @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  sections     Section[]
+  orderItems   OrderItem[]
+  enrollments  Enrollment[]
+
+  @@index([category, level])
+  @@index([instructorId])
+}
+
+model Section {
+  id       String   @id @default(uuid())
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order    Int
+  title    String
+  lessons  Lesson[]
+
+  @@unique([courseId, order])
+}
+
+model Lesson {
+  id          String           @id @default(uuid())
+  sectionId   String
+  section     Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  order       Int
+  title       String
+  durationSec Int
+  isPreview   Boolean          @default(false)
+  /// YouTube-ийн 11 тэмдэгтийн ID (бүтэн URL биш). Эзэмшээгүй хэрэглэгчид хэзээ ч буцаахгүй.
+  youtubeId   String           @db.VarChar(11)
+  progress    LessonProgress[]
+
+  @@unique([sectionId, order])
+}
+
+model Order {
+  id                String       @id @default(uuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  /// Төгрөгөөр — серверт үнээс тооцоологдоно, клиентийн утгад итгэхгүй
+  total             Int
+  status            OrderStatus  @default(pending)
+  provider          String
+  providerInvoiceId String?      @unique
+  createdAt         DateTime     @default(now())
+  items             OrderItem[]
+  enrollments       Enrollment[]
+
+  @@index([userId, createdAt])
+}
+
+model OrderItem {
+  id              String @id @default(uuid())
+  orderId         String
+  order           Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  /// Худалдан авах үеийн үнийг хөлдөөнө — дараа үнэ өөрчлөгдсөн ч түүх зөв
+  priceAtPurchase Int
+
+  @@unique([orderId, courseId])
+  @@index([courseId])
+}
+
+/// Эрхийн цорын ганц үнэн. Дараа нь бэлэг/купон/админ эрх ч энд л бичигдэнэ.
+model Enrollment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([orderId])
+}
+
+model LessonProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
+}
+
+enum Level {
+  beginner
+  intermediate
+  advanced
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+}

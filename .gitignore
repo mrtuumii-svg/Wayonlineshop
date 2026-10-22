@@ -31,3 +31,6 @@ dist-ssr
 *.sw?
 test-results/
 playwright-report/
+
+# Prisma-ийн үүсгэсэн client — `prisma generate`-ээр дахин үүснэ
+apps/api/src/generated/
