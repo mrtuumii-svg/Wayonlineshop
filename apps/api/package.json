@@ -23,7 +23,9 @@
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "@way/contract": "*",
+    "argon2": "^0.45.1",
     "fastify": "^5.12.7",
+    "jose": "^6.2.13",
     "zod": "^4.6.7"
   },
   "devDependencies": {

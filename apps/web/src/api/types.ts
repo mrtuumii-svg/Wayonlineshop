@@ -4,6 +4,7 @@
  */
 export type {
   ApiErrorCode,
+  AuthResult,
   Course,
   CourseFilter,
   CourseSummary,
