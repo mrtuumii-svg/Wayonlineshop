@@ -76,6 +76,12 @@ export interface User {
   email: string
 }
 
+/** Бүртгүүлэх/нэвтрэхийн хариу. Токеныг `Authorization: Bearer <token>` толгойд илгээнэ. */
+export interface AuthResult {
+  user: User
+  token: string
+}
+
 export type OrderStatus = 'pending' | 'paid' | 'failed'
 
 export interface Order {
