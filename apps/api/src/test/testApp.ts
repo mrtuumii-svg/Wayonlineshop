@@ -18,4 +18,5 @@ export const testConfig = (over: Partial<Config> = {}): Config => ({
 })
 
 /** Сүлжээнд listen хийхгүй — `app.inject()`-ээр хүсэлт симуляци хийнэ. */
-export const buildTestApp = (over?: Partial<Config>) => buildApp(testConfig(over))
+export const buildTestApp = (over?: Partial<Config>, deps?: Parameters<typeof buildApp>[1]) =>
+  buildApp(testConfig(over), deps)

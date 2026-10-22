@@ -10,6 +10,7 @@ import type { PaymentProvider } from './payments/provider.js'
 import { authRoutes } from './routes/auth.js'
 import { courseRoutes } from './routes/courses.js'
 import { healthRoutes } from './routes/health.js'
+import { meRoutes } from './routes/me.js'
 import { orderRoutes } from './routes/orders.js'
 
 declare module 'fastify' {
@@ -68,6 +69,7 @@ export async function buildApp(config: Config, deps: { prisma?: PrismaClient } =
   await app.register(authRoutes)
   await app.register(courseRoutes)
   await app.register(orderRoutes)
+  await app.register(meRoutes)
 
   return app
 }
