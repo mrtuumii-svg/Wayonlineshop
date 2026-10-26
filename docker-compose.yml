@@ -38,5 +38,50 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── API (profile `app`) ──────────────────────────────────────────────
+  # `docker compose up -d` нь зөвхөн сангуудыг асаана (тест, локал dev).
+  # API-г контейнерээр: `docker compose --profile app up -d --build`
+  # Нууцууд root-ийн `.env`-ээс (`.env.example`-ийг харна уу).
+
+  # Migration + seed-ийг нэг удаа ажиллуулаад гарна. Seed нь upsert тул давтахад аюулгүй.
+  migrate:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    environment:
+      DATABASE_URL: postgresql://way:way_dev_only@db:5432/way_dev
+    command: ['sh', '-c', 'npx prisma migrate deploy && npm run db:seed']
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    container_name: way-api
+    restart: unless-stopped
+    environment:
+      # Fake төлбөрийн провайдер production-д хориотой (сервер эхлэхгүй) тул бодит QPay холбогдох хүртэл development
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://way:way_dev_only@db:5432/way_dev
+      JWT_SECRET: ${JWT_SECRET:?root .env-д JWT_SECRET тавина уу}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:?root .env-д PAYMENT_WEBHOOK_SECRET тавина уу}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      PAYMENT_PROVIDER: fake
+      FAKE_PAY_AFTER_MS: 2000
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   way-db-data:

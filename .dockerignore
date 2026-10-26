@@ -1,0 +1,13 @@
+# Image-д хэрэггүй, эсвэл орох ёсгүй зүйлс
+**/node_modules
+**/dist
+**/generated
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.superpowers
+**/test-results
+**/playwright-report
+**/coverage
+docs
