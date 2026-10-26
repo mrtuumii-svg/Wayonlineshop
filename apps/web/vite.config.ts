@@ -28,6 +28,12 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ['src/test/setup.ts'],
       exclude: ['e2e/**', 'node_modules/**'],
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: ['src/test/**', 'src/main.tsx', '**/*.test.{ts,tsx}', '**/*.d.ts'],
+        thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
+      },
     },
   }
 })

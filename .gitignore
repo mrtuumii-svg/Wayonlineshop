@@ -34,3 +34,6 @@ playwright-report/
 
 # Prisma-ийн үүсгэсэн client — `prisma generate`-ээр дахин үүснэ
 apps/api/src/generated/
+
+# Тестийн хамрах хүрээний тайлан
+coverage/
