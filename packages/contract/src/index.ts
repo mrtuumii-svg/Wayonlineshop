@@ -10,8 +10,8 @@ export interface Lesson {
   title: string
   durationSec: number
   isPreview: boolean
-  /** Зөвхөн preview эсвэл худалдаж авсан хичээлд ирнэ */
-  videoUrl?: string
+  /** YouTube-ийн 11 тэмдэгтийн ID. Зөвхөн preview эсвэл худалдаж авсан хичээлд ирнэ */
+  youtubeId?: string
 }
 
 export interface Section {
@@ -74,6 +74,12 @@ export interface User {
   id: string
   name: string
   email: string
+}
+
+/** Бүртгүүлэх/нэвтрэхийн хариу. Токеныг `Authorization: Bearer <token>` толгойд илгээнэ. */
+export interface AuthResult {
+  user: User
+  token: string
 }
 
 export type OrderStatus = 'pending' | 'paid' | 'failed'

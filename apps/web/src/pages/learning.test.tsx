@@ -35,7 +35,7 @@ test('learn page plays the lesson video', async () => {
   const api = await ownedSetup()
   renderApp('/learn/react-ekhlel/l2', { api })
   expect(await screen.findByRole('heading', { name: 'Орчин бэлтгэх' })).toBeInTheDocument()
-  expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('flower.mp4'))
+  expect(document.querySelector('iframe')).toHaveAttribute('src', expect.stringContaining('youtube-nocookie.com/embed/eRsGyueVLvQ'))
 })
 
 test('mark complete updates state and next link works', async () => {

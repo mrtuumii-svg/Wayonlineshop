@@ -12,7 +12,8 @@ test('browse → buy → watch → progress', async ({ page }) => {
   await expect(page).toHaveURL(/\/login\?redirect=/)
   await page.getByRole('link', { name: 'Бүртгүүлэх' }).click()
   await page.getByLabel('Нэр').fill('Бат')
-  await page.getByLabel('Имэйл').fill('bat@test.mn')
+  // Бодит backend-д сан хадгалагддаг тул ажиллуулалт бүрт шинэ имэйл
+  await page.getByLabel('Имэйл').fill(`bat+${Date.now()}@test.mn`)
   await page.getByLabel('Нууц үг').fill('secret1')
   await page.getByRole('button', { name: 'Бүртгүүлэх' }).click()
   await expect(page).toHaveURL(/\/checkout$/)
@@ -21,11 +22,11 @@ test('browse → buy → watch → progress', async ({ page }) => {
   await expect(page).toHaveURL(/\/my-courses$/)
   await expect(page.getByText('Явц: 0%')).toBeVisible()
   await page.getByRole('link', { name: 'Үргэлжлүүлэх' }).click()
-  await expect(page.locator('video')).toBeVisible()
+  await expect(page.locator('iframe[src*="youtube-nocookie.com/embed/"]')).toBeVisible()
   await page.getByRole('button', { name: 'Дууссан гэж тэмдэглэх' }).click()
   await expect(page.getByRole('button', { name: 'Дууссан ✓' })).toBeDisabled()
   await page.goto('/my-courses')
   await expect(page.getByText('Явц: 33%')).toBeVisible()
   await page.reload()
-  await expect(page.getByText('Явц: 33%')).toBeVisible() // localStorage-д хадгалагдсан
+  await expect(page.getByText('Явц: 33%')).toBeVisible() // хадгалагдсан (mock: localStorage, http: DB)
 })

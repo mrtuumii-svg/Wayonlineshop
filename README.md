@@ -27,6 +27,16 @@ npm run db:migrate -w @way/api       # schema.prisma өөрчилсний дар
 
 Өөр тестийн сан ашиглах бол `TEST_DATABASE_URL`-ээр заана.
 
+### Frontend-ийг backend-тэй ажиллуулах
+
+```bash
+npm run dev -w @way/api                          # API (localhost:3000)
+VITE_API_MODE=http npm run dev -w @way/web       # /api → localhost:3000 (dev proxy)
+npm run e2e:http -w @way/web                     # E2E: бодит API + тестийн сан (5433)
+```
+
+`VITE_API_MODE` байхгүй бол frontend mock (localStorage) дээр ажиллана — unit тест болон GitHub Pages үүгээр явна.
+
 ## Бүтэц
 
 - `src/api/` — `ApiClient` интерфейс ба mock хэрэгжилт (`VITE_API_MODE`-оор дараа нь солигдоно)
