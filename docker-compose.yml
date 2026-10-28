@@ -75,6 +75,8 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
       PAYMENT_PROVIDER: fake
       FAKE_PAY_AFTER_MS: 2000
+      # AI туслах — key байхгүй бол /chat 503 буцаана, бусад нь ажиллана
+      LLM_API_KEY: ${LLM_API_KEY:-}
     ports:
       - '3000:3000'
     depends_on:

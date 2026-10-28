@@ -14,6 +14,9 @@ export const testConfig = (over: Partial<Config> = {}): Config => ({
   PAYMENT_WEBHOOK_SECRET: 'test-webhook-secret-long-enough-32ch',
   // Тестэд автомат төлбөр унтраалттай — webhook-ийг тест өөрөө дуудна
   FAKE_PAY_AFTER_MS: 0,
+  // Тестэд бодит model дуудахгүй — шаардлагатай тест fake `llm`-ийг deps-ээр өгнө
+  LLM_BASE_URL: 'http://llm.invalid/v1',
+  LLM_MODEL: 'test-model',
   ...over,
 })
 
