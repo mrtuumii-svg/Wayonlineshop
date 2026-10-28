@@ -41,7 +41,7 @@ export function LearnPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
-        {lesson.videoUrl && <VideoPlayer src={lesson.videoUrl} title={lesson.title} onEnded={markDone} />}
+        {lesson.youtubeId && <VideoPlayer youtubeId={lesson.youtubeId} title={lesson.title} onEnded={markDone} />}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-slate-500">
