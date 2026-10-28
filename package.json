@@ -12,5 +12,11 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "e2e": "npm run e2e -w @way/web"
+  },
+  "allowScripts": {
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true,
+    "argon2@0.45.1": true,
+    "esbuild@0.28.2": true
   }
 }

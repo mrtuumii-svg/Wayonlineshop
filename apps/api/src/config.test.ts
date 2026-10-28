@@ -87,3 +87,12 @@ test('an unknown PAYMENT_PROVIDER is rejected', () => {
 test('the fake provider is refused in production — it would hand out courses for free', () => {
   expect(() => loadConfig({ ...valid, NODE_ENV: 'production' })).toThrow(/PAYMENT_PROVIDER/)
 })
+
+test('LLM: key заавал биш, хоосон утга нь байхгүйтэй адил, анхдагч нь Gemini', () => {
+  const c = loadConfig({ ...valid, LLM_API_KEY: '  ' })
+  expect(c.LLM_API_KEY).toBeUndefined()
+  expect(c.LLM_BASE_URL).toContain('generativelanguage.googleapis.com')
+  expect(c.LLM_MODEL).toBe('gemini-3.5-flash-lite')
+  expect(loadConfig({ ...valid, LLM_API_KEY: 'k' }).LLM_API_KEY).toBe('k')
+  expect(() => loadConfig({ ...valid, LLM_BASE_URL: 'not a url' })).toThrow(/LLM_BASE_URL/)
+})

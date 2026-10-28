@@ -13,7 +13,7 @@ import type {
   User,
 } from './types'
 
-const CODES: readonly ApiErrorCode[] = ['VALIDATION', 'UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'RATE_LIMITED', 'UNKNOWN']
+const CODES: readonly ApiErrorCode[] = ['VALIDATION', 'UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'RATE_LIMITED', 'UNKNOWN', 'UNAVAILABLE']
 
 /** Серверийн бие танигдахгүй үед (прокси, gateway алдаа г.м.) HTTP статусаас код гаргана */
 function codeFromStatus(status: number): ApiErrorCode {
@@ -22,6 +22,7 @@ function codeFromStatus(status: number): ApiErrorCode {
   if (status === 403) return 'FORBIDDEN'
   if (status === 404) return 'NOT_FOUND'
   if (status === 429) return 'RATE_LIMITED'
+  if (status === 503) return 'UNAVAILABLE'
   return 'UNKNOWN'
 }
 
@@ -32,6 +33,7 @@ const DEFAULT_MESSAGE: Record<ApiErrorCode, string> = {
   NOT_FOUND: 'Олдсонгүй',
   RATE_LIMITED: 'Хэт олон хүсэлт. Хэсэг хүлээгээд дахин оролдоно уу.',
   UNKNOWN: 'Алдаа гарлаа. Дахин оролдоно уу.',
+  UNAVAILABLE: 'Үйлчилгээ түр ажиллахгүй байна. Хэсэг хүлээгээд дахин оролдоно уу.',
 }
 
 const REQUEST_TIMEOUT_MS = 15_000

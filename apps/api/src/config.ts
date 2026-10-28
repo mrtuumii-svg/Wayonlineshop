@@ -21,6 +21,12 @@ const envSchema = z.object({
   PAYMENT_WEBHOOK_SECRET: z.string().min(32, 'дор хаяж 32 тэмдэгт байх ёстой'),
   /** Fake провайдер нэхэмжлэх үүсгэснээс хойш хэдэн ms-ийн дараа өөрөө "төлөгдсөн" webhook илгээх. 0 = илгээхгүй. */
   FAKE_PAY_AFTER_MS: z.coerce.number().int().min(0).default(2000),
+  /** AI туслахын key. Байхгүй бол сервер асна, харин `/chat` 503 буцаана. */
+  // `.env.example`-ийн хоосон `LLM_API_KEY=` нь "байхгүй"-тэй адил
+  LLM_API_KEY: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), z.string().trim().optional()),
+  /** OpenAI-тэй ижил хэлбэрийн API-ийн хаяг. Анхдагч нь Gemini. */
+  LLM_BASE_URL: z.url('URL байх ёстой').default('https://generativelanguage.googleapis.com/v1beta/openai/'),
+  LLM_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
 })
 
 export interface Config {
@@ -33,6 +39,9 @@ export interface Config {
   PAYMENT_PROVIDER: 'fake'
   PAYMENT_WEBHOOK_SECRET: string
   FAKE_PAY_AFTER_MS: number
+  LLM_API_KEY?: string
+  LLM_BASE_URL: string
+  LLM_MODEL: string
 }
 
 export class ConfigError extends Error {

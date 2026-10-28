@@ -21,6 +21,7 @@ export const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   NOT_FOUND: 404,
   RATE_LIMITED: 429,
   UNKNOWN: 500,
+  UNAVAILABLE: 503,
 }
 
 /** Хариуны биеийн цорын ганц хэлбэр. Клиент үүнийг ApiError болгон хөрвүүлнэ. */
@@ -36,3 +37,4 @@ export const validation = (message: string) => new AppError('VALIDATION', messag
 export const unauthorized = (message = 'Нэвтэрнэ үү') => new AppError('UNAUTHORIZED', message)
 export const forbidden = (message = 'Танд хандах эрх байхгүй') => new AppError('FORBIDDEN', message)
 export const notFound = (message = 'Олдсонгүй') => new AppError('NOT_FOUND', message)
+export const unavailable = (message: string) => new AppError('UNAVAILABLE', message)

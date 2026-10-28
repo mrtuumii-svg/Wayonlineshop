@@ -2,12 +2,14 @@ import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import Fastify, { type FastifyInstance } from 'fastify'
+import { createOpenAiCompatibleLlm, type Llm } from './chat/llm.js'
 import type { Config } from './config.js'
 import { createPrisma, type PrismaClient } from './db.js'
 import { registerErrorHandler } from './errorHandler.js'
 import { createFakeProvider } from './payments/fake.js'
 import type { PaymentProvider } from './payments/provider.js'
 import { authRoutes } from './routes/auth.js'
+import { chatRoutes } from './routes/chat.js'
 import { courseRoutes } from './routes/courses.js'
 import { healthRoutes } from './routes/health.js'
 import { meRoutes } from './routes/me.js'
@@ -18,6 +20,8 @@ declare module 'fastify' {
     config: Config
     prisma: PrismaClient
     payments: PaymentProvider
+    /** LLM_API_KEY байхгүй бол null — `/chat` 503 буцаана */
+    llm: Llm | null
   }
 }
 
@@ -29,7 +33,10 @@ const RATE_LIMIT_WINDOW = '1 minute'
  * Тохиргоог параметрээр авна (глобал импорт биш) — тестэд хуурамч тохиргоотой
  * апп зохиож, сүлжээнд listen хийхгүйгээр `app.inject()`-ээр шалгах боломж өгнө.
  */
-export async function buildApp(config: Config, deps: { prisma?: PrismaClient } = {}): Promise<FastifyInstance> {
+export async function buildApp(
+  config: Config,
+  deps: { prisma?: PrismaClient; llm?: Llm | null } = {},
+): Promise<FastifyInstance> {
   const app = Fastify({
     logger: config.NODE_ENV === 'test' ? false : { level: config.NODE_ENV === 'production' ? 'info' : 'debug' },
     // Прокси цаад талд байхад client IP зөв тодорхойлогдож rate limit ажиллана
@@ -41,6 +48,14 @@ export async function buildApp(config: Config, deps: { prisma?: PrismaClient } =
   app.decorate('config', config)
   app.decorate('prisma', prisma)
   app.decorateRequest('user', null)
+
+  const llm =
+    deps.llm !== undefined
+      ? deps.llm
+      : config.LLM_API_KEY
+        ? createOpenAiCompatibleLlm({ apiKey: config.LLM_API_KEY, baseUrl: config.LLM_BASE_URL, model: config.LLM_MODEL })
+        : null
+  app.decorate('llm', llm)
 
   // Fake провайдер "төлөгдсөн" webhook-ийг сүлжээгээр биш, апп руу шууд (inject) хүргэнэ —
   // гэхдээ бодит webhook-тэй яг ижил route, ижил гарын үсгийн шалгалтаар дамжина.
@@ -70,6 +85,7 @@ export async function buildApp(config: Config, deps: { prisma?: PrismaClient } =
   await app.register(courseRoutes)
   await app.register(orderRoutes)
   await app.register(meRoutes)
+  await app.register(chatRoutes)
 
   return app
 }
