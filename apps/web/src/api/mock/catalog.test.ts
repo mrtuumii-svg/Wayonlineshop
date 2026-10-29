@@ -72,7 +72,7 @@ test('list items are summaries: no sections and no video ids', async () => {
   const [first] = (await api().getCourses()).items
   expect(first).toBeDefined()
   expect(first).not.toHaveProperty('sections')
-  expect(JSON.stringify(first)).not.toContain('videoUrl')
+  expect(JSON.stringify(first)).not.toContain('youtubeId')
 })
 
 test('summaries carry lesson count and total duration', async () => {
@@ -94,11 +94,11 @@ test('getCoursesByIds dedupes repeated ids', async () => {
   expect(await api().getCoursesByIds(['c1', 'c1'])).toHaveLength(1)
 })
 
-test('getCourse strips videoUrl except preview for anonymous', async () => {
+test('getCourse strips youtubeId except preview for anonymous', async () => {
   const c = await api().getCourse('react-ekhlel')
   const lessons = c.sections.flatMap((s) => s.lessons)
-  expect(lessons.find((l) => l.id === 'l1')!.videoUrl).toBeDefined()
-  expect(lessons.find((l) => l.id === 'l2')!.videoUrl).toBeUndefined()
+  expect(lessons.find((l) => l.id === 'l1')!.youtubeId).toBeDefined()
+  expect(lessons.find((l) => l.id === 'l2')!.youtubeId).toBeUndefined()
 })
 
 test('getCourse throws NOT_FOUND for unknown slug', async () => {

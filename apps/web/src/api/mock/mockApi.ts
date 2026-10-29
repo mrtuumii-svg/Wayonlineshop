@@ -35,7 +35,7 @@ export interface MockApiOptions {
 
 const normalize = (s: string) => s.trim().toLocaleLowerCase('mn')
 
-/** Зөвхөн жагсаалтад шаардлагатай талбарууд. `sections`, `videoUrl`, багшийн bio энд хэзээ ч ирэхгүй. */
+/** Зөвхөн жагсаалтад шаардлагатай талбарууд. `sections`, `youtubeId`, багшийн bio энд хэзээ ч ирэхгүй. */
 function toSummary(c: Course): CourseSummary {
   return {
     id: c.id,
@@ -116,13 +116,13 @@ export function createMockApi(opts: MockApiOptions): MockApi {
     return { user, course }
   }
 
-  /** Худалдаж аваагүй, preview биш хичээлийн videoUrl-ийг нууна */
+  /** Худалдаж аваагүй, preview биш хичээлийн youtubeId-г нууна */
   function present(course: Course): Course {
     const copy = structuredClone(course)
     if (isOwned(copy.id)) return copy
     for (const section of copy.sections) {
       for (const l of section.lessons) {
-        if (!l.isPreview) delete l.videoUrl
+        if (!l.isPreview) delete l.youtubeId
       }
     }
     return copy
