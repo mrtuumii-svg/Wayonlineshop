@@ -1,11 +1,15 @@
 import type { Course, Lesson, Level, Section } from '../types'
 
-export const SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
+/**
+ * Blender Foundation-ийн нийтэд нээлттэй кинонууд — backend-ийн seed (`apps/api/prisma/seedData.ts`)-тэй
+ * ижлээр хичээлийн дарааллаар оноогдоно.
+ */
+export const DEMO_YOUTUBE_IDS = ['aqz-KE-bpKQ', 'eRsGyueVLvQ', 'R6MlUcmOul8'] as const
 
 export const categories: string[] = ['Програмчлал', 'Дизайн', 'Маркетинг', 'Англи хэл']
 
 function lesson(id: string, title: string, durationSec: number, isPreview = false): Lesson {
-  return { id, title, durationSec, isPreview, videoUrl: SAMPLE_VIDEO }
+  return { id, title, durationSec, isPreview }
 }
 
 function course(
@@ -33,8 +37,16 @@ function course(
       avatar: `https://i.pravatar.cc/96?u=${encodeURIComponent(instructor)}`,
       bio: `${instructor} нь энэ чиглэлээр олон жил ажилласан туршлагатай багш.`,
     },
-    sections,
+    sections: withDemoVideos(sections),
   }
+}
+
+function withDemoVideos(sections: Section[]): Section[] {
+  let i = 0
+  return sections.map((s) => ({
+    ...s,
+    lessons: s.lessons.map((l) => ({ ...l, youtubeId: DEMO_YOUTUBE_IDS[i++ % DEMO_YOUTUBE_IDS.length] })),
+  }))
 }
 
 export const courses: Course[] = [
