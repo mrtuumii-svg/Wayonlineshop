@@ -5,14 +5,19 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import type { Config } from './config.js'
 import { createPrisma, type PrismaClient } from './db.js'
 import { registerErrorHandler } from './errorHandler.js'
+import { createFakeProvider } from './payments/fake.js'
+import type { PaymentProvider } from './payments/provider.js'
 import { authRoutes } from './routes/auth.js'
 import { courseRoutes } from './routes/courses.js'
 import { healthRoutes } from './routes/health.js'
+import { meRoutes } from './routes/me.js'
+import { orderRoutes } from './routes/orders.js'
 
 declare module 'fastify' {
   interface FastifyInstance {
     config: Config
     prisma: PrismaClient
+    payments: PaymentProvider
   }
 }
 
@@ -36,6 +41,22 @@ export async function buildApp(config: Config, deps: { prisma?: PrismaClient } =
   app.decorate('config', config)
   app.decorate('prisma', prisma)
   app.decorateRequest('user', null)
+
+  // Fake провайдер "төлөгдсөн" webhook-ийг сүлжээгээр биш, апп руу шууд (inject) хүргэнэ —
+  // гэхдээ бодит webhook-тэй яг ижил route, ижил гарын үсгийн шалгалтаар дамжина.
+  const payments = createFakeProvider({
+    secret: config.PAYMENT_WEBHOOK_SECRET,
+    payAfterMs: config.FAKE_PAY_AFTER_MS,
+    deliver: async (payload, headers) => {
+      const res = await app.inject({ method: 'POST', url: '/payments/webhook', payload: payload as object, headers })
+      if (res.statusCode !== 200) throw new Error(`fake webhook ${res.statusCode}: ${res.body}`)
+    },
+    onDeliverError: (err) => app.log.error({ err }, 'Fake төлбөрийн webhook амжилтгүй'),
+  })
+  app.decorate('payments', payments)
+
+  // Эхлээд провайдерын таймеруудыг зогсооно, дараа нь DB-г хаана
+  app.addHook('onClose', async () => payments.close())
   // Гаднаас өгсөн client-ийг эзэмшигч нь хаана
   if (!deps.prisma) app.addHook('onClose', () => prisma.$disconnect())
 
@@ -47,6 +68,8 @@ export async function buildApp(config: Config, deps: { prisma?: PrismaClient } =
   await app.register(healthRoutes)
   await app.register(authRoutes)
   await app.register(courseRoutes)
+  await app.register(orderRoutes)
+  await app.register(meRoutes)
 
   return app
 }

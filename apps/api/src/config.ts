@@ -15,6 +15,12 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'дор хаяж 32 тэмдэгт байх ёстой'),
   /** Нэг юм уу хэдэн origin, таслалаар зааглана. */
   CORS_ORIGIN: z.string().min(1),
+  /** Одоогоор зөвхөн `fake`. QPay нэмэгдэхэд `qpay` гэж сонгоно — endpoint-ийн код өөрчлөгдөхгүй. */
+  PAYMENT_PROVIDER: z.enum(['fake']).default('fake'),
+  /** Провайдерын webhook-ийн гарын үсгийг шалгах түлхүүр. */
+  PAYMENT_WEBHOOK_SECRET: z.string().min(32, 'дор хаяж 32 тэмдэгт байх ёстой'),
+  /** Fake провайдер нэхэмжлэх үүсгэснээс хойш хэдэн ms-ийн дараа өөрөө "төлөгдсөн" webhook илгээх. 0 = илгээхгүй. */
+  FAKE_PAY_AFTER_MS: z.coerce.number().int().min(0).default(2000),
 })
 
 export interface Config {
@@ -24,6 +30,9 @@ export interface Config {
   DATABASE_URL: string
   JWT_SECRET: string
   corsOrigins: string[]
+  PAYMENT_PROVIDER: 'fake'
+  PAYMENT_WEBHOOK_SECRET: string
+  FAKE_PAY_AFTER_MS: number
 }
 
 export class ConfigError extends Error {
@@ -51,6 +60,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
   if (corsOrigins.length === 0) {
     throw new ConfigError('Орчны хувьсагчид буруу байна:\n  CORS_ORIGIN: дор хаяж нэг origin байх ёстой')
+  }
+
+  // Fake провайдер төлбөргүйгээр "төлөгдсөн" гэж хэлдэг — production-д ажиллавал хичээлүүд үнэгүй болно
+  if (rest.NODE_ENV === 'production' && rest.PAYMENT_PROVIDER === 'fake') {
+    throw new ConfigError(
+      'Орчны хувьсагчид буруу байна:\n  PAYMENT_PROVIDER: production-д fake провайдер хориотой (бодит провайдер тохируулна уу)',
+    )
   }
 
   return { ...rest, corsOrigins }

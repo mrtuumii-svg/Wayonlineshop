@@ -4,6 +4,7 @@ const valid = {
   DATABASE_URL: 'postgresql://way:way@localhost:5432/way_dev',
   JWT_SECRET: 'a'.repeat(32),
   CORS_ORIGIN: 'http://localhost:5173',
+  PAYMENT_WEBHOOK_SECRET: 'w'.repeat(32),
 }
 
 test('loads a valid env and applies defaults', () => {
@@ -61,6 +62,28 @@ test('the error message never leaks the secret values', () => {
 })
 
 test('NODE_ENV only accepts the known environments', () => {
-  expect(loadConfig({ ...valid, NODE_ENV: 'production' }).NODE_ENV).toBe('production')
+  expect(loadConfig({ ...valid, NODE_ENV: 'test' }).NODE_ENV).toBe('test')
+  // production-ийг схем хүлээн авна (унавал fake провайдерын улмаас, NODE_ENV-ийн биш)
+  expect(() => loadConfig({ ...valid, NODE_ENV: 'production' })).not.toThrow(/NODE_ENV/)
   expect(() => loadConfig({ ...valid, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/)
+})
+
+test('payment: fake provider by default, auto-pays after 2s', () => {
+  expect(loadConfig(valid)).toMatchObject({ PAYMENT_PROVIDER: 'fake', FAKE_PAY_AFTER_MS: 2000 })
+  expect(loadConfig({ ...valid, FAKE_PAY_AFTER_MS: '0' }).FAKE_PAY_AFTER_MS).toBe(0)
+  expect(() => loadConfig({ ...valid, FAKE_PAY_AFTER_MS: '-1' })).toThrow(/FAKE_PAY_AFTER_MS/)
+})
+
+test('a missing or short PAYMENT_WEBHOOK_SECRET is rejected', () => {
+  const { PAYMENT_WEBHOOK_SECRET: _omit, ...rest } = valid
+  expect(() => loadConfig(rest)).toThrow(/PAYMENT_WEBHOOK_SECRET/)
+  expect(() => loadConfig({ ...valid, PAYMENT_WEBHOOK_SECRET: 'short' })).toThrow(/PAYMENT_WEBHOOK_SECRET/)
+})
+
+test('an unknown PAYMENT_PROVIDER is rejected', () => {
+  expect(() => loadConfig({ ...valid, PAYMENT_PROVIDER: 'paypal' })).toThrow(/PAYMENT_PROVIDER/)
+})
+
+test('the fake provider is refused in production — it would hand out courses for free', () => {
+  expect(() => loadConfig({ ...valid, NODE_ENV: 'production' })).toThrow(/PAYMENT_PROVIDER/)
 })
