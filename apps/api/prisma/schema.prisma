@@ -49,6 +49,7 @@ model Course {
   sections     Section[]
   orderItems   OrderItem[]
   enrollments  Enrollment[]
+  books        Book[]
 
   @@index([category, level])
   @@index([instructorId])
@@ -157,6 +158,29 @@ model Message {
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+/// Үнэгүй ном. Манай сайт номыг хадгалахгүй — readUrl нь албан ёсны үнэгүй хувилбар руу хөтөлнө.
+model Book {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  author      String
+  description String
+  /// Хичээлийн ангилалтай ижил (Програмчлал, Дизайн, ...)
+  category    String
+  language    String
+  year        Int?
+  /// Нүүр зураг. Байхгүй бол сайт гарчиг, зохиогчоор нь нүүр зурна
+  coverUrl    String?
+  readUrl     String
+  /// Холбогдох хичээл. Хичээл устахад ном үлдэнэ, холбоос нь л арилна
+  courseId    String?
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([courseId])
 }
 
 enum Role {

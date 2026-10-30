@@ -31,11 +31,11 @@ async function userHeaders(admin = false): Promise<{ authorization: string }> {
 }
 
 const newCourse = (over: object = {}) => ({
-  slug: 'python-ekhlel',
-  title: 'Python эхлэл',
-  description: 'Python-ий үндэс',
+  slug: 'rust-ekhlel',
+  title: 'Rust эхлэл',
+  description: 'Rust-ийн үндэс',
   price: 45000,
-  thumbnail: 'https://picsum.photos/seed/python/640/360',
+  thumbnail: 'https://picsum.photos/seed/rust/640/360',
   category: 'Програмчлал',
   level: 'beginner',
   instructorId: 'i1',
@@ -118,7 +118,7 @@ describe('хичээл', () => {
     const res = await app.inject({ method: 'POST', url: '/admin/courses', headers: await userHeaders(true), payload: newCourse() })
     expect(res.statusCode).toBe(201)
 
-    const course = (await app.inject('/courses/python-ekhlel')).json()
+    const course = (await app.inject('/courses/rust-ekhlel')).json()
     expect(course.sections[0].lessons[0]).toMatchObject({ title: 'Суулгах', youtubeId: 'aqz-KE-bpKQ' })
   })
 

@@ -10,6 +10,7 @@ import { createFakeProvider } from './payments/fake.js'
 import type { PaymentProvider } from './payments/provider.js'
 import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
+import { bookRoutes } from './routes/books.js'
 import { chatRoutes } from './routes/chat.js'
 import { courseRoutes } from './routes/courses.js'
 import { healthRoutes } from './routes/health.js'
@@ -84,6 +85,7 @@ export async function buildApp(
   await app.register(healthRoutes)
   await app.register(authRoutes)
   await app.register(courseRoutes)
+  await app.register(bookRoutes)
   await app.register(orderRoutes)
   await app.register(meRoutes)
   await app.register(chatRoutes)

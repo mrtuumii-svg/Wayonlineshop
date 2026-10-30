@@ -15,6 +15,7 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/contract/package.json packages/contract/
+COPY packages/catalog/package.json packages/catalog/
 
 # ── build: бүх dependency (dev орно), Prisma client үүсгэж TypeScript-ийг хөрвүүлнэ.
 # Migration болон seed-ийг ч энэ stage-ээр ажиллуулна (prisma CLI, tsx нь devDependency).
@@ -24,6 +25,8 @@ COPY apps/api/prisma apps/api/prisma
 COPY apps/api/prisma.config.ts apps/api/
 RUN npm ci -w @way/api
 COPY packages/contract packages/contract
+# Seed-ийн өгөгдөл (хичээлийн зураг, номууд). Сервер өөрөө ажиллах үедээ импортлохгүй.
+COPY packages/catalog packages/catalog
 COPY apps/api apps/api
 RUN npm run build -w @way/api
 WORKDIR /app/apps/api
