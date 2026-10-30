@@ -3,9 +3,13 @@ import { Link, useNavigate } from 'react-router'
 import { buttonClass } from '@/components/Button'
 import { CourseCard } from '@/components/CourseCard'
 import { ErrorState, Skeleton } from '@/components/states'
+import { BookCard } from '@/features/books/BookCard'
+import { useBooks } from '@/features/books/queries'
 import { useCategories, useCourses } from '@/features/catalog/queries'
 
-const FEATURED_COUNT = 4
+/** Нүүрэнд бүх хичээлийг харуулна (backend-ийн нэг хуудасны дээд хэмжээ) */
+const ALL_COURSES_LIMIT = 50
+const HOME_BOOKS = 12
 
 const highlights = [
   { title: 'Хүссэн цагтаа', text: 'Видео хичээлээ өөрийн хэмнэлээр, хаанаас ч үзнэ.' },
@@ -14,8 +18,8 @@ const highlights = [
 ]
 
 export function HomePage() {
-  // Зөвхөн хэрэгтэй тоог татна — бүх каталогийг авч slice хийхгүй
-  const courses = useCourses({ limit: FEATURED_COUNT })
+  const courses = useCourses({ limit: ALL_COURSES_LIMIT })
+  const books = useBooks({ limit: HOME_BOOKS })
   const { data: categories = [] } = useCategories()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
@@ -91,15 +95,41 @@ export function HomePage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-2xl font-extrabold">Онцлох хичээлүүд</h2>
+        <div className="mb-4 flex items-baseline justify-between gap-4">
+          <h2 className="text-2xl font-extrabold">Бүх хичээлүүд</h2>
+          {courses.data && <span className="text-sm text-slate-500">{courses.data.total} хичээл</span>}
+        </div>
         {courses.isPending ? (
-          <Skeleton count={4} />
+          <Skeleton count={8} />
         ) : courses.isError ? (
           <ErrorState onRetry={() => courses.refetch()} />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {courses.data.items.map((c) => (
               <CourseCard key={c.id} course={c} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-baseline justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-extrabold">Үнэгүй номууд</h2>
+            <p className="mt-1 text-sm text-slate-600">Хичээлтэйгээ хамт унших дэлхийн шилдэг номууд</p>
+          </div>
+          <Link to="/books" className="shrink-0 text-sm font-semibold text-brand-700 hover:underline">
+            {books.data ? `Бүх ${books.data.total} ном` : 'Бүх ном'} →
+          </Link>
+        </div>
+        {books.isPending ? (
+          <p className="text-slate-500">Ачаалж байна…</p>
+        ) : books.isError ? (
+          <ErrorState onRetry={() => books.refetch()} />
+        ) : (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {books.data.items.map((b) => (
+              <BookCard key={b.id} book={b} />
             ))}
           </div>
         )}

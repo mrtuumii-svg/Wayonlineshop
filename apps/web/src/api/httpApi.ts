@@ -4,6 +4,9 @@ import type {
   AdminOrder,
   AdminUser,
   ApiErrorCode,
+  Book,
+  BookFilter,
+  BookSummary,
   ChatConversation,
   ChatReply,
   Course,
@@ -54,6 +57,16 @@ export interface HttpApiOptions {
 }
 
 const seg = encodeURIComponent
+
+/** Хоосон биш утгуудаас `?a=1&b=2` үүсгэнэ (хоосон бол '') */
+function query(filter: object): string {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(filter)) {
+    if (v !== undefined && v !== null && v !== '') params.set(k, String(v))
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
 
 /** Backend (`apps/api`)-тай HTTP-ээр харилцах `ApiClient`. Төлбөрийг провайдер баталгаажуулдаг тул `simulatePayment` байхгүй. */
 export function createHttpApi(opts: HttpApiOptions): ApiClient {
@@ -110,14 +123,7 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
   }
 
   return {
-    getCourses(filter: CourseFilter = {}) {
-      const params = new URLSearchParams()
-      for (const [k, v] of Object.entries(filter)) {
-        if (v !== undefined && v !== null && v !== '') params.set(k, String(v))
-      }
-      const qs = params.toString()
-      return get<Paginated<CourseSummary>>(`/courses${qs ? `?${qs}` : ''}`)
-    },
+    getCourses: (filter: CourseFilter = {}) => get<Paginated<CourseSummary>>(`/courses${query(filter)}`),
 
     async getCoursesByIds(ids) {
       if (ids.length === 0) return []
@@ -126,6 +132,10 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
 
     getCourse: (slug) => get<Course>(`/courses/${seg(slug)}`),
     getCategories: () => get<string[]>('/categories'),
+
+    getBooks: (filter: BookFilter = {}) => get<Paginated<BookSummary>>(`/books${query(filter)}`),
+    getBook: (slug) => get<Book>(`/books/${seg(slug)}`),
+    getBookCategories: () => get<string[]>('/books/categories'),
 
     register: (input) => post<AuthResult>('/auth/register', input),
     login: (input) => post<AuthResult>('/auth/login', input),

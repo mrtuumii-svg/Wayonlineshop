@@ -5,6 +5,8 @@ import type { Lesson } from '@/api/types'
 import { Button, buttonClass } from '@/components/Button'
 import { ErrorState, Skeleton } from '@/components/states'
 import { useAuthStore } from '@/features/auth/authStore'
+import { BookCard } from '@/features/books/BookCard'
+import { useBooks } from '@/features/books/queries'
 import { useCartStore } from '@/features/cart/cartStore'
 import { CurriculumList } from '@/features/course/CurriculumList'
 import { useCourse, useMyCourses } from '@/features/course/queries'
@@ -22,6 +24,8 @@ export function CourseDetailPage() {
   const inCart = useCartStore((s) => (course ? s.courseIds.includes(course.id) : false))
   const addToCart = useCartStore((s) => s.add)
   const [preview, setPreview] = useState<Lesson | null>(null)
+  // Хичээл ачаалагдсаны дараа л (id хэрэгтэй)
+  const books = useBooks({ courseId: course?.id, limit: 12 }, { enabled: !!course })
 
   if (isPending) return <Skeleton count={1} />
   if (isError) {
@@ -69,6 +73,18 @@ export function CourseDetailPage() {
             }
           />
         </section>
+
+        {books.data && books.data.items.length > 0 && (
+          <section>
+            <h2 className="mb-1 text-xl font-bold">Холбогдох номууд</h2>
+            <p className="mb-4 text-sm text-slate-600">Хичээлтэйгээ хамт уншихад тустай үнэгүй номууд</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4">
+              {books.data.items.map((b) => (
+                <BookCard key={b.id} book={b} />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4">
           <img src={course.instructor.avatar} alt="" className="h-14 w-14 rounded-full" />

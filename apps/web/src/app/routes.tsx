@@ -8,6 +8,8 @@ import { AdminCoursesPage } from '@/pages/admin/CoursesPage'
 import { DashboardPage } from '@/pages/admin/DashboardPage'
 import { OrdersPage } from '@/pages/admin/OrdersPage'
 import { UsersPage } from '@/pages/admin/UsersPage'
+import { BookDetailPage } from '@/pages/BookDetailPage'
+import { BooksPage } from '@/pages/BooksPage'
 import { CartPage } from '@/pages/CartPage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CheckoutPage } from '@/pages/CheckoutPage'
@@ -28,6 +30,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: 'courses', element: <CatalogPage /> },
       { path: 'courses/:slug', element: <CourseDetailPage /> },
+      { path: 'books', element: <BooksPage /> },
+      { path: 'books/:slug', element: <BookDetailPage /> },
       { path: 'cart', element: <CartPage /> },
       {
         path: 'checkout',
