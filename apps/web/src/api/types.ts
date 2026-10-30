@@ -3,6 +3,10 @@
  * Энэ файл нь зөвхөн re-export — UI кодын `@/api/types` импортууд хэвээр ажиллана.
  */
 export type {
+  AdminOrder,
+  AdminUser,
+  CourseInput,
+  CourseUpdate,
   ApiErrorCode,
   AuthResult,
   ChatConversation,
@@ -20,6 +24,8 @@ export type {
   Paginated,
   PaymentIntent,
   Progress,
+  Role,
+  SalesReport,
   Section,
   User,
 } from '@way/contract'

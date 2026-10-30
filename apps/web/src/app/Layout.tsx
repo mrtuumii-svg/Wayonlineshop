@@ -1,9 +1,11 @@
 import { Outlet } from 'react-router'
 import { Header } from '@/components/Header'
 import { Logo } from '@/components/Logo'
+import { useSessionRefresh } from '@/features/auth/useSessionRefresh'
 import { ChatWidget } from '@/features/chat/ChatWidget'
 
 export function Layout() {
+  useSessionRefresh()
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <Header />

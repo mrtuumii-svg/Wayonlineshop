@@ -19,6 +19,7 @@ export const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  CONFLICT: 409,
   RATE_LIMITED: 429,
   UNKNOWN: 500,
   UNAVAILABLE: 503,

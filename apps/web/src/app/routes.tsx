@@ -1,5 +1,8 @@
 import type { RouteObject } from 'react-router'
+import { AdminLayout } from '@/features/admin/AdminLayout'
+import { RequireAdmin } from '@/features/auth/RequireAdmin'
 import { RequireAuth } from '@/features/auth/RequireAuth'
+import { DashboardPage } from '@/pages/admin/DashboardPage'
 import { CartPage } from '@/pages/CartPage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CheckoutPage } from '@/pages/CheckoutPage'
@@ -46,6 +49,15 @@ export const routes: RouteObject[] = [
             <LearnPage />
           </RequireAuth>
         ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <RequireAdmin>
+            <AdminLayout />
+          </RequireAdmin>
+        ),
+        children: [{ index: true, element: <DashboardPage /> }],
       },
       { path: '*', element: <NotFoundPage /> },
     ],

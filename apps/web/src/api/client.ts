@@ -1,4 +1,8 @@
 import type {
+  AdminOrder,
+  AdminUser,
+  CourseInput,
+  CourseUpdate,
   AuthResult,
   ChatConversation,
   ChatReply,
@@ -11,10 +15,27 @@ import type {
   Paginated,
   PaymentIntent,
   Progress,
+  Role,
+  SalesReport,
   User,
 } from './types'
 
 export type { AuthResult }
+
+/**
+ * Админы API. Зөвхөн role=admin хэрэглэгчид backend зөвшөөрнө (бусдад 403).
+ * Сайт цэсийг нуудаг нь зөвхөн тав тух — жинхэнэ хамгаалалт нь backend.
+ */
+export interface AdminApi {
+  getSalesReport(): Promise<SalesReport>
+  getUsers(): Promise<AdminUser[]>
+  setUserRole(id: string, role: Role): Promise<AdminUser>
+  getOrders(status?: Order['status']): Promise<AdminOrder[]>
+  getInstructors(): Promise<{ id: string; name: string }[]>
+  createCourse(input: CourseInput): Promise<{ id: string; slug: string }>
+  updateCourse(id: string, input: CourseUpdate): Promise<{ id: string; slug: string }>
+  deleteCourse(id: string): Promise<void>
+}
 
 /** Backend-тэй харилцах цорын ганц гэрээ. UI зөвхөн үүгээр дамжина. */
 export interface ApiClient {
@@ -42,4 +63,6 @@ export interface ApiClient {
   chat(input: ChatRequest): Promise<ChatReply>
   /** Refresh-ийн дараа яриаг сэргээх. Байхгүй бол NOT_FOUND. */
   getConversation(id: string): Promise<ChatConversation>
+  /** Админы хэсэг. Mock горимд байхгүй (undefined) */
+  admin?: AdminApi
 }
