@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { AdminApi, ApiClient } from '@/api/client'
 import { ApiError } from '@/api/errors'
@@ -101,26 +101,32 @@ describe('хичээл', () => {
     loginAs(adminUser)
     const { api, admin } = adminTestApi(adminUser)
     const { user } = renderApp('/admin/courses/new', { api })
+    // Тэмдэгт бүрээр бичвэл (user.type) том форм олон дахин зурагдаж ачаалалтай үед тест унадаг.
+    // Энэ тест бичих үйлдлийг биш, шалгалт ба илгээх өгөгдлийг шалгадаг тул утгыг нэг дор оноог.
+    const fill = async (label: string | RegExp, text: string) => {
+      fireEvent.change(await screen.findByLabelText(label), { target: { value: text } })
+    }
 
-    await user.type(await screen.findByLabelText('Гарчиг'), 'Python эхлэл')
-    await user.type(screen.getByLabelText(/Хаяг \(slug\)/), 'python-ekhlel')
-    await user.type(screen.getByLabelText('Тайлбар'), 'Python-ий үндэс')
-    await user.type(screen.getByLabelText('Үнэ (₮)'), '45000')
-    await user.type(screen.getByLabelText('Ангилал'), 'Програмчлал')
-    await user.selectOptions(await screen.findByLabelText('Багш'), await screen.findByRole('option', { name: 'Б. Тэмүүлэн' }))
-    await user.type(screen.getByLabelText('Бүлгийн нэр'), 'Танилцуулга')
-    await user.type(screen.getByLabelText('1.1 Хичээлийн нэр'), 'Суулгах')
-    await user.type(screen.getByLabelText('Минут'), '5')
-    const video = screen.getByLabelText('YouTube хаяг эсвэл ID')
+    await fill('Гарчиг', 'Python эхлэл')
+    await fill(/Хаяг \(slug\)/, 'python-ekhlel')
+    await fill('Тайлбар', 'Python-ий үндэс')
+    await fill('Үнэ (₮)', '45000')
+    await fill('Ангилал', 'Програмчлал')
+    // *ByRole нь том DOM-д удаан тул энэ урт тестэд текстээр хайна
+    await screen.findByText('Б. Тэмүүлэн') // багш нар ачаалагдтал хүлээнэ
+    await user.selectOptions(screen.getByLabelText('Багш'), 'i1')
+    await fill('Бүлгийн нэр', 'Танилцуулга')
+    await fill('1.1 Хичээлийн нэр', 'Суулгах')
+    await fill('Минут', '5')
+    const submit = screen.getByText('Хичээл нэмэх') // "+ Хичээл нэмэх"-тэй андуурахгүй (яг таарах)
 
-    await user.type(video, 'буруу')
-    await user.click(screen.getByRole('button', { name: 'Хичээл нэмэх' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('YouTube')
+    await fill('YouTube хаяг эсвэл ID', 'буруу')
+    await user.click(submit)
+    expect(await screen.findByText(/YouTube хаяг эсвэл ID буруу/)).toBeInTheDocument()
     expect(admin.createCourse).not.toHaveBeenCalled()
 
-    await user.clear(video)
-    await user.type(video, 'https://www.youtube.com/watch?v=aqz-KE-bpKQ')
-    await user.click(screen.getByRole('button', { name: 'Хичээл нэмэх' }))
+    await fill('YouTube хаяг эсвэл ID', 'https://www.youtube.com/watch?v=aqz-KE-bpKQ')
+    await user.click(submit)
     await waitFor(() =>
       expect(admin.createCourse).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -131,7 +137,7 @@ describe('хичээл', () => {
         }),
       ),
     )
-  }, 20_000) // олон талбарт бичдэг тул бусад тестээс удаан
+  })
 })
 
 describe('хэрэглэгч, захиалга', () => {
