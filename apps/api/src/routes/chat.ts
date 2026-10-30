@@ -8,8 +8,6 @@ import { notFound, unavailable, validation } from '../errors.js'
 /** Хариултын дээд хязгаар (token). System prompt-ын "1–3 өгүүлбэр"-ийн хамгаалалт. */
 const MAX_TOKENS = 500
 const MESSAGE_MAX_CHARS = 2000
-/** Нэг ярианы мессежийн дээд тоо (асуулт + хариулт). Sliding window ирэх хүртэлх хамгаалалт. */
-const HISTORY_MAX = 40
 
 /** Model-ийн дуудлага бүр мөнгө — ердийн квотоос хатуу */
 const CHAT_RATE_LIMIT = { max: 20, timeWindow: '1 minute' }
@@ -33,17 +31,25 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
 
     if (!app.llm) throw unavailable('Туслах одоогоор тохируулагдаагүй байна.')
 
-    // Өмнөх түүх: шинэ яриа бол хоосон
+    // Sliding window: санд бүх түүх байгаа ч model-д зөвхөн сүүлийн N мессежийг илгээнэ —
+    // яриа уртсах тусам token (үнэ, хугацаа) өсөхгүй
     let history: { role: 'user' | 'assistant'; content: string }[] = []
     if (conversationId) {
       const conversation = await app.prisma.conversation.findUnique({
         where: { id: conversationId },
-        select: { messages: { orderBy: { createdAt: 'asc' }, select: { role: true, content: true } } },
+        select: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: app.config.CHAT_HISTORY_WINDOW,
+            select: { role: true, content: true },
+          },
+        },
       })
       if (!conversation) throw notFound(NOT_FOUND_MESSAGE)
-      history = conversation.messages
+      history = conversation.messages.reverse()
+      // Цонх хариултаар эхэлбэл асуултгүй хариулт болно — хасна
+      if (history[0]?.role === 'assistant') history.shift()
     }
-    if (history.length + 2 > HISTORY_MAX) throw validation('Яриа хэт урт байна. Шинэ яриа эхлүүлнэ үү.')
 
     const askedAt = new Date()
     const system = await buildSystemPrompt(app.prisma)

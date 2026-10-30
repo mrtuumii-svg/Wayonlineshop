@@ -20,8 +20,8 @@ function fakeLlm(result: string | Error = 'Тийм, байна.') {
   return { llm, calls }
 }
 
-async function start(llm: Llm | null) {
-  app = await buildTestApp({}, { llm })
+async function start(llm: Llm | null, config: Parameters<typeof buildTestApp>[0] = {}) {
+  app = await buildTestApp(config, { llm })
   await app.ready()
 }
 
@@ -146,22 +146,53 @@ describe('POST /chat', () => {
     expect(await prisma.message.count()).toBe(0)
   })
 
-  it('яриа хэт урт бол 400, model дуудахгүй', async () => {
-    const { llm, calls } = fakeLlm()
-    await start(llm)
-    const conversation = await prisma.conversation.create({
+  /** Q0 A1 Q2 A3 … дарааллаар `count` мессежтэй яриа (createdAt 1 секундын зайтай) */
+  async function longConversation(count: number) {
+    const start = Date.now() - count * 1000
+    return prisma.conversation.create({
       data: {
         messages: {
-          create: Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? ('assistant' as const) : ('user' as const), content: `${i}` })),
+          create: Array.from({ length: count }, (_, i) => ({
+            role: i % 2 ? ('assistant' as const) : ('user' as const),
+            content: `${i % 2 ? 'A' : 'Q'}${i}`,
+            createdAt: new Date(start + i * 1000),
+          })),
         },
       },
     })
+  }
 
-    const res = await ask('Дахиад нэг', conversation.id)
+  it('sliding window: model-д зөвхөн сүүлийн N мессеж явна, урт яриа зогсохгүй', async () => {
+    const { llm, calls } = fakeLlm()
+    await start(llm, { CHAT_HISTORY_WINDOW: 4 })
+    const conversation = await longConversation(50)
 
-    expect(res.statusCode).toBe(400)
-    expect(res.json().message).toContain('Шинэ яриа')
-    expect(calls).toHaveLength(0)
+    const res = await ask('Шинэ асуулт', conversation.id)
+
+    expect(res.statusCode).toBe(200)
+    expect(calls[0]?.messages.map((m) => m.content)).toEqual(['Q46', 'A47', 'Q48', 'A49', 'Шинэ асуулт'])
+    // Санд түүх бүхэлдээ үлдэнэ
+    expect(await prisma.message.count({ where: { conversationId: conversation.id } })).toBe(52)
+  })
+
+  it('цонх хариултаар эхэлбэл түүнийг хасна (асуултгүй хариулт явахгүй)', async () => {
+    const { llm, calls } = fakeLlm()
+    await start(llm, { CHAT_HISTORY_WINDOW: 3 })
+    const conversation = await longConversation(6)
+
+    await ask('Шинэ асуулт', conversation.id)
+
+    expect(calls[0]?.messages.map((m) => m.content)).toEqual(['Q4', 'A5', 'Шинэ асуулт'])
+  })
+
+  it('CHAT_HISTORY_WINDOW=0 бол зөвхөн шинэ асуулт явна', async () => {
+    const { llm, calls } = fakeLlm()
+    await start(llm, { CHAT_HISTORY_WINDOW: 0 })
+    const conversation = await longConversation(4)
+
+    await ask('Шинэ асуулт', conversation.id)
+
+    expect(calls[0]?.messages).toEqual([{ role: 'user', content: 'Шинэ асуулт' }])
   })
 
   it.each([
