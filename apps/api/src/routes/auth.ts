@@ -40,7 +40,8 @@ function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   return r.data
 }
 
-const publicUser = { id: true, name: true, email: true } as const
+/** role: сайт админд "Удирдлага" цэсийг харуулна. passwordHash хэзээ ч орохгүй. */
+const publicUser = { id: true, name: true, email: true, role: true } as const
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const session = async (user: User): Promise<AuthResult> => ({
@@ -77,7 +78,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const ok = await verifyPassword(found?.passwordHash ?? (await getDummyHash()), input.password)
     if (!found || !ok) throw unauthorized(INVALID_CREDENTIALS)
 
-    return session({ id: found.id, name: found.name, email: found.email })
+    return session({ id: found.id, name: found.name, email: found.email, role: found.role })
   })
 
   app.get('/auth/me', { preHandler: requireAuth }, async (req) => req.user)

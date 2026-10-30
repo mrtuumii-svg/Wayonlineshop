@@ -39,7 +39,7 @@ describe('POST /auth/register', () => {
 
     expect(res.statusCode).toBe(201)
     const body = res.json()
-    expect(body.user).toEqual({ id: expect.any(String), name: 'Алиса', email: 'alice@example.com' })
+    expect(body.user).toEqual({ id: expect.any(String), name: 'Алиса', email: 'alice@example.com', role: 'user' })
     expect(typeof body.token).toBe('string')
     expectNoSecrets(res.body)
   })
