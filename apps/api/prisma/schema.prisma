@@ -135,6 +135,28 @@ model LessonProgress {
   @@index([lessonId])
 }
 
+/// AI туслахтай хийсэн нэг яриа. Нэвтрэлт шаардахгүй — клиент id-г localStorage-д хадгална.
+model Conversation {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  /// Яриа устахад мессежүүд нь хамт устана — яриагүй мессеж утгагүй
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ChatRole
+  content        String
+  /// Зөвхөн assistant-д: тэр дуудлагын token (snapshot — дараа үнэ өөрчлөгдсөн ч зардлыг тооцож болно)
+  inputTokens    Int?
+  outputTokens   Int?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
 enum Level {
   beginner
   intermediate
@@ -145,4 +167,9 @@ enum OrderStatus {
   pending
   paid
   failed
+}
+
+enum ChatRole {
+  user
+  assistant
 }

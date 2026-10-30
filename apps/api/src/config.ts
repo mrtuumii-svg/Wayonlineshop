@@ -27,6 +27,8 @@ const envSchema = z.object({
   /** OpenAI-тэй ижил хэлбэрийн API-ийн хаяг. Анхдагч нь Gemini. */
   LLM_BASE_URL: z.url('URL байх ёстой').default('https://generativelanguage.googleapis.com/v1beta/openai/'),
   LLM_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+  /** Sliding window: model-д илгээх өмнөх мессежийн тоо. Түүх бүхэлдээ санд үлдэнэ. 0 = түүхгүй. */
+  CHAT_HISTORY_WINDOW: z.coerce.number().int().min(0).max(40).default(4),
 })
 
 export interface Config {
@@ -42,6 +44,7 @@ export interface Config {
   LLM_API_KEY?: string
   LLM_BASE_URL: string
   LLM_MODEL: string
+  CHAT_HISTORY_WINDOW: number
 }
 
 export class ConfigError extends Error {
