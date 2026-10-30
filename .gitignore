@@ -37,3 +37,4 @@ apps/api/src/generated/
 
 # Тестийн хамрах хүрээний тайлан
 coverage/
+backups/

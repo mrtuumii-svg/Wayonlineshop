@@ -137,3 +137,20 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
 }
+
+/** `POST /chat`: `conversationId` байхгүй бол сервер шинэ яриа үүсгэнэ */
+export interface ChatRequest {
+  conversationId?: string
+  message: string
+}
+
+export interface ChatReply {
+  conversationId: string
+  reply: string
+}
+
+/** `GET /chat/:id` — refresh-ийн дараа яриаг сэргээнэ */
+export interface ChatConversation {
+  id: string
+  messages: ChatMessage[]
+}

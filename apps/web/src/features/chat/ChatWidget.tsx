@@ -5,18 +5,62 @@ import type { ChatMessage } from '@/api/types'
 
 const GREETING = 'Сайн байна уу! Way Academy-ийн хичээл, үнэ, төлбөрийн талаар асуугаарай.'
 
+/** Ярианы дугаар (гардеробын номер). Мессежүүд өөрсдөө серверийн санд хадгалагдана. */
+const STORAGE_KEY = 'way-chat-conversation'
+
+// Хувийн цонх, хаагдсан storage-д алдаа шиддэг тул чат ажилласаар байх ёстой
+function readConversationId(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeConversationId(id: string | null) {
+  try {
+    if (id) localStorage.setItem(STORAGE_KEY, id)
+    else localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // хадгалж чадахгүй бол яриа зөвхөн энэ хуудсанд үлдэнэ
+  }
+}
+
 /**
  * Баруун доод булангийн AI туслах.
- * Яриа зөвхөн React state-д байгаа тул refresh хийхэд алга болно (Хичээл 10-д DB-д хадгална).
+ * Яриа серверийн санд хадгалагдаж, refresh-ийн дараа localStorage-ийн дугаараар сэргээгдэнэ.
  */
 export function ChatWidget() {
   const api = useApi()
   const [open, setOpen] = useState(false)
+  const [conversationId, setConversationId] = useState(readConversationId)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(false)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const loadedRef = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Анх нээхэд хадгалсан яриаг сангаас ачаална
+  useEffect(() => {
+    if (!open || loadedRef.current || !conversationId) return
+    loadedRef.current = true
+    setLoading(true)
+    api
+      .getConversation(conversationId)
+      .then((c) => setMessages(c.messages))
+      .catch((err) => {
+        // Устсан эсвэл буруу дугаар — шинээр эхэлнэ
+        if (isApiError(err) && err.code === 'NOT_FOUND') {
+          writeConversationId(null)
+          setConversationId(null)
+        } else {
+          setError('Өмнөх яриаг ачаалж чадсангүй.')
+        }
+      })
+      .finally(() => setLoading(false))
+  }, [api, open, conversationId])
 
   // Шинэ мессеж ирэхэд доош гүйлгэнэ
   useEffect(() => {
@@ -26,17 +70,22 @@ export function ChatWidget() {
   async function send(e: FormEvent) {
     e.preventDefault()
     const text = input.trim()
-    if (!text || sending) return
+    if (!text || sending || loading) return
 
-    const next: ChatMessage[] = [...messages, { role: 'user', content: text }]
-    setMessages(next)
+    const before = messages
+    setMessages([...before, { role: 'user', content: text }])
     setInput('')
     setError(null)
     setSending(true)
     try {
-      const { reply } = await api.chat(next)
-      setMessages([...next, { role: 'assistant', content: reply }])
+      const res = await api.chat({ conversationId: conversationId ?? undefined, message: text })
+      writeConversationId(res.conversationId)
+      setConversationId(res.conversationId)
+      setMessages([...before, { role: 'user', content: text }, { role: 'assistant', content: res.reply }])
     } catch (err) {
+      // Сервер хадгалаагүй — асуултыг буцааж оруулна, дахин илгээж болно
+      setMessages(before)
+      setInput(text)
       setError(isApiError(err) ? err.message : 'Алдаа гарлаа. Дахин оролдоно уу.')
     } finally {
       setSending(false)
@@ -67,6 +116,7 @@ export function ChatWidget() {
             {messages.map((m, i) => (
               <Bubble key={i} role={m.role} content={m.content} />
             ))}
+            {loading && <p className="text-slate-500">Өмнөх яриаг ачаалж байна…</p>}
             {sending && <p className="text-slate-500">Бичиж байна…</p>}
             {error && (
               <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-red-700">

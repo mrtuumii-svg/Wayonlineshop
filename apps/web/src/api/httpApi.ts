@@ -2,6 +2,8 @@ import type { ApiClient, AuthResult } from './client'
 import { ApiError } from './errors'
 import type {
   ApiErrorCode,
+  ChatConversation,
+  ChatReply,
   Course,
   CourseFilter,
   CourseSummary,
@@ -118,6 +120,7 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
     markLessonComplete: (courseId, lessonId) =>
       post<Progress>(`/me/progress/${seg(courseId)}/lessons/${seg(lessonId)}`),
 
-    chat: (messages) => post<{ reply: string }>('/chat', { messages }),
+    chat: (input) => post<ChatReply>('/chat', input),
+    getConversation: (id) => get<ChatConversation>(`/chat/${seg(id)}`),
   }
 }

@@ -295,7 +295,12 @@ export function createMockApi(opts: MockApiOptions): MockApi {
     /** Mock-д AI байхгүй — бодит хариуг `VITE_API_MODE=http` горимд авна */
     async chat() {
       await wait()
-      return { reply: 'Туслах зөвхөн бодит API-тай (VITE_API_MODE=http) ажиллана.' }
+      return { conversationId: 'mock', reply: 'Туслах зөвхөн бодит API-тай (VITE_API_MODE=http) ажиллана.' }
+    },
+
+    async getConversation() {
+      await wait()
+      throw new ApiError('NOT_FOUND', 'Яриа олдсонгүй')
     },
   }
 }

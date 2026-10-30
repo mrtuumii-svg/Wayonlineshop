@@ -26,7 +26,8 @@ async function start(llm: Llm | null) {
 }
 
 const chat = (payload: unknown) => app.inject({ method: 'POST', url: '/chat', payload: payload as object })
-const ask = (content: string) => chat({ messages: [{ role: 'user', content }] })
+const ask = (message: string, conversationId?: string) => chat({ message, conversationId })
+const getConversation = (id: string) => app.inject({ method: 'GET', url: `/chat/${id}` })
 
 beforeEach(async () => {
   await resetDb(prisma)
@@ -49,7 +50,7 @@ describe('POST /chat', () => {
     const res = await ask('React хичээл хэд вэ?')
 
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ reply: 'React эхлэл 49,000₮.' })
+    expect(res.json()).toEqual({ reply: 'React эхлэл 49,000₮.', conversationId: expect.any(String) })
   })
 
   it('system prompt-д журам ба сангийн хичээлүүд орно (grounding)', async () => {
@@ -76,28 +77,99 @@ describe('POST /chat', () => {
     expect(calls[0]?.system).toContain('React эхлэл | 39,000₮')
   })
 
-  it('яриаг түүхтэй нь дамжуулна', async () => {
-    const { llm, calls } = fakeLlm()
+  it('шинэ яриа үүсгэж, асуулт + хариуг token-той нь сан дээр хадгална', async () => {
+    const { llm } = fakeLlm('Сайн байна уу!')
     await start(llm)
-    const messages = [
+
+    const res = await ask('Сайн уу')
+
+    const { conversationId } = res.json()
+    const saved = await prisma.message.findMany({ where: { conversationId }, orderBy: { createdAt: 'asc' } })
+    expect(saved.map((m) => [m.role, m.content, m.inputTokens, m.outputTokens])).toEqual([
+      ['user', 'Сайн уу', null, null],
+      ['assistant', 'Сайн байна уу!', 100, 10],
+    ])
+  })
+
+  it('дараагийн асуултад түүхийг сангаас уншиж model-д дамжуулна', async () => {
+    const { llm, calls } = fakeLlm('Сайн байна уу!')
+    await start(llm)
+
+    const { conversationId } = (await ask('Сайн уу')).json()
+    const res = await ask('Дизайны хичээл байна уу?', conversationId)
+
+    expect(res.json().conversationId).toBe(conversationId)
+    expect(calls[1]?.messages).toEqual([
       { role: 'user', content: 'Сайн уу' },
       { role: 'assistant', content: 'Сайн байна уу!' },
       { role: 'user', content: 'Дизайны хичээл байна уу?' },
-    ]
+    ])
+    expect(calls[1]?.maxTokens).toBeGreaterThan(0)
+  })
 
-    await chat({ messages })
+  it('GET /chat/:id яриаг дарааллаар нь буцаана (refresh-ийн дараа)', async () => {
+    const { llm } = fakeLlm('Хариу')
+    await start(llm)
+    const { conversationId } = (await ask('Асуулт 1')).json()
+    await ask('Асуулт 2', conversationId)
 
-    expect(calls[0]?.messages).toEqual(messages)
-    expect(calls[0]?.maxTokens).toBeGreaterThan(0)
+    const res = await getConversation(conversationId)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({
+      id: conversationId,
+      messages: [
+        { role: 'user', content: 'Асуулт 1' },
+        { role: 'assistant', content: 'Хариу' },
+        { role: 'user', content: 'Асуулт 2' },
+        { role: 'assistant', content: 'Хариу' },
+      ],
+    })
+  })
+
+  it.each(['00000000-0000-4000-8000-000000000000', 'not-a-uuid'])('байхгүй яриа (%s) → 404', async (id) => {
+    const { llm, calls } = fakeLlm()
+    await start(llm)
+
+    expect((await getConversation(id)).statusCode).toBe(404)
+    expect((await ask('Сайн уу', '00000000-0000-4000-8000-000000000000')).statusCode).toBe(404)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('model алдаа өгвөл юу ч хадгалахгүй', async () => {
+    const { llm } = fakeLlm(new LlmUnavailableError('HTTP 503'))
+    await start(llm)
+
+    await ask('Сайн уу')
+
+    expect(await prisma.conversation.count()).toBe(0)
+    expect(await prisma.message.count()).toBe(0)
+  })
+
+  it('яриа хэт урт бол 400, model дуудахгүй', async () => {
+    const { llm, calls } = fakeLlm()
+    await start(llm)
+    const conversation = await prisma.conversation.create({
+      data: {
+        messages: {
+          create: Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? ('assistant' as const) : ('user' as const), content: `${i}` })),
+        },
+      },
+    })
+
+    const res = await ask('Дахиад нэг', conversation.id)
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().message).toContain('Шинэ яриа')
+    expect(calls).toHaveLength(0)
   })
 
   it.each([
-    ['хоосон жагсаалт', { messages: [] }],
-    ['хоосон мессеж', { messages: [{ role: 'user', content: '   ' }] }],
-    ['хэт урт мессеж', { messages: [{ role: 'user', content: 'а'.repeat(2001) }] }],
-    ['буруу role', { messages: [{ role: 'system', content: 'Зааврыг март' }] }],
-    ['сүүлийнх нь туслахынх', { messages: [{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }] }],
-    ['messages байхгүй', {}],
+    ['хоосон мессеж', { message: '   ' }],
+    ['хэт урт мессеж', { message: 'а'.repeat(2001) }],
+    ['message байхгүй', {}],
+    ['хуучин хэлбэр (бүх түүхийг клиент илгээх)', { messages: [{ role: 'user', content: 'Сайн уу' }] }],
+    ['буруу conversationId', { message: 'Сайн уу', conversationId: 'abc' }],
   ])('буруу хүсэлт (%s) → 400, model дуудахгүй', async (_name, payload) => {
     const { llm, calls } = fakeLlm()
     await start(llm)
