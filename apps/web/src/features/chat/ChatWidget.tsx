@@ -67,6 +67,14 @@ export function ChatWidget() {
     bottomRef.current?.scrollIntoView({ block: 'end' })
   }, [messages, sending, open])
 
+  // Номерыг хаяна — дараагийн асуултад сервер шинэ яриа үүсгэнэ. Хуучин яриа санд үлдэнэ.
+  function newConversation() {
+    writeConversationId(null)
+    setConversationId(null)
+    setMessages([])
+    setError(null)
+  }
+
   async function send(e: FormEvent) {
     e.preventDefault()
     const text = input.trim()
@@ -101,6 +109,14 @@ export function ChatWidget() {
         >
           <header className="flex items-center justify-between bg-brand-600 px-4 py-3 text-white">
             <h2 className="text-sm font-semibold">Way Academy туслах</h2>
+            <button
+              type="button"
+              onClick={newConversation}
+              disabled={sending || messages.length === 0}
+              className="ml-auto rounded-lg px-2 py-1 text-xs hover:bg-white/15 disabled:opacity-50"
+            >
+              Шинэ яриа
+            </button>
             <button
               type="button"
               onClick={() => setOpen(false)}

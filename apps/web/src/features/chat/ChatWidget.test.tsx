@@ -91,6 +91,22 @@ test('сан дээр байхгүй дугаарыг устгаж шинээр 
   expect(localStorage.getItem('way-chat-conversation')).toBe(ID)
 })
 
+test('«Шинэ яриа» номерыг хаяж, дэлгэцийг цэвэрлэнэ', async () => {
+  const { api, requests } = fakeChatApi()
+  const { user } = renderWidget(api)
+  await user.click(screen.getByRole('button', { name: 'Туслахтай ярих' }))
+  await ask(user, 'Сайн уу')
+
+  await user.click(screen.getByRole('button', { name: 'Шинэ яриа' }))
+
+  expect(screen.queryByText('Хариу: Сайн уу')).not.toBeInTheDocument()
+  expect(localStorage.getItem('way-chat-conversation')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Шинэ яриа' })).toBeDisabled()
+
+  await ask(user, 'Дахин сайн уу')
+  expect(requests.at(-1)).toEqual({ message: 'Дахин сайн уу' })
+})
+
 test('алдаа гарвал асуултыг буцааж оруулна', async () => {
   const api = {
     chat: () => Promise.reject(new ApiError('UNAVAILABLE', 'Туслах түр завгүй байна.')),
