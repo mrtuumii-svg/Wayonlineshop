@@ -131,3 +131,9 @@ export type ApiErrorCode =
   | 'RATE_LIMITED'
   | 'UNKNOWN'
   | 'UNAVAILABLE'
+
+/** Чатын нэг мессеж. `user` = хэрэглэгч, `assistant` = бот */
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}

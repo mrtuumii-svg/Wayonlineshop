@@ -117,5 +117,7 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
     getProgress: (courseId) => get<Progress>(`/me/progress/${seg(courseId)}`),
     markLessonComplete: (courseId, lessonId) =>
       post<Progress>(`/me/progress/${seg(courseId)}/lessons/${seg(lessonId)}`),
+
+    chat: (messages) => post<{ reply: string }>('/chat', { messages }),
   }
 }

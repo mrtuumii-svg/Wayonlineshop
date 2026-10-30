@@ -5,6 +5,7 @@
 export type {
   ApiErrorCode,
   AuthResult,
+  ChatMessage,
   Course,
   CourseFilter,
   CourseSummary,

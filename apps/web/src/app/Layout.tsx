@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router'
 import { Header } from '@/components/Header'
 import { Logo } from '@/components/Logo'
+import { ChatWidget } from '@/features/chat/ChatWidget'
 
 export function Layout() {
   return (
@@ -37,6 +38,7 @@ export function Layout() {
           © {new Date().getFullYear()} Way Academy
         </p>
       </footer>
+      <ChatWidget />
     </div>
   )
 }

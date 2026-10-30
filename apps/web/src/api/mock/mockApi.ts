@@ -291,5 +291,11 @@ export function createMockApi(opts: MockApiOptions): MockApi {
       writeJson(opts.storage, PROGRESS_KEY, next)
       return { courseId, completedLessonIds: next[key] ?? done }
     },
+
+    /** Mock-д AI байхгүй — бодит хариуг `VITE_API_MODE=http` горимд авна */
+    async chat() {
+      await wait()
+      return { reply: 'Туслах зөвхөн бодит API-тай (VITE_API_MODE=http) ажиллана.' }
+    },
   }
 }

@@ -1,5 +1,6 @@
 import type {
   AuthResult,
+  ChatMessage,
   Course,
   CourseFilter,
   CourseSummary,
@@ -35,4 +36,6 @@ export interface ApiClient {
   getMyCourses(): Promise<MyCourse[]>
   getProgress(courseId: string): Promise<Progress>
   markLessonComplete(courseId: string, lessonId: string): Promise<Progress>
+  /** AI туслахтай ярих. Бүх түүхийг илгээж, ботын хариуг авна. */
+  chat(messages: ChatMessage[]): Promise<{ reply: string }>
 }
