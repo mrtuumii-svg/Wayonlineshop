@@ -54,8 +54,12 @@ Profile-гүй `docker compose up -d` нь өмнөх шигээ зөвхөн с
 
 Image-ийг дангаар нь: `docker build -f apps/api/Dockerfile -t way-api .` (build context нь root).
 
-> Төлбөр одоогоор зөвхөн `fake` провайдер. Энэ нь production-д хориотой (`NODE_ENV=production` үед сервер эхлэхгүй),
-> тиймээс compose дээр `NODE_ENV=development`. Бодит QPay провайдер нэмэгдсэний дараа production болгоно.
+> Төлбөр: `fake` (анхдагч) эсвэл `qpay`. Production-д fake болон QPay sandbox хориотой (`NODE_ENV=production` үед сервер эхлэхгүй),
+> тиймээс compose дээр `NODE_ENV=development`. Production болгохын тулд бодит `QPAY_*` мэдээлэл болон https `PUBLIC_API_URL` тавина.
+>
+> QPay-ийн callback гарын үсэггүй тул backend түүнд итгэхгүй — callback ирэхэд болон `GET /orders/:id`-ийн polling үед
+> төлбөрийг QPay API-аас (`/v2/payment/check`) өөрөө шалгана. Sandbox (TEST_MERCHANT)-ийн QR-ийг банкны апп уншихгүй —
+> sandbox дээр нэхэмжлэх/QR үүсэхийг л шалгана, "төлөгдсөн" урсгалыг fake провайдер болон тестүүд шалгана.
 
 ### API-ийн орчны хувьсагчид
 
@@ -68,7 +72,10 @@ Image-ийг дангаар нь: `docker build -f apps/api/Dockerfile -t way-ap
 | `NODE_ENV` | | `development` | `development` / `test` / `production` |
 | `HOST` | | `0.0.0.0` | Сонсох хаяг |
 | `PORT` | | `3000` | Сонсох порт |
-| `PAYMENT_PROVIDER` | | `fake` | Одоогоор зөвхөн `fake` (production-д хориотой) |
+| `PAYMENT_PROVIDER` | | `fake` | `fake` (production-д хориотой) эсвэл `qpay` |
+| `QPAY_CLIENT_ID`, `QPAY_CLIENT_SECRET`, `QPAY_INVOICE_CODE` | | хоосон (sandbox) | QPay merchant мэдээлэл. Нэг нь байвал гурвуулаа заавал. Production-д sandbox хориотой |
+| `QPAY_BASE_URL` | | sandbox / `https://merchant.qpay.mn` | QPay API-ийн хаяг |
+| `PUBLIC_API_URL` | qpay + production | — | QPay callback-ийн суурь хаяг (`/payments/qpay/callback`), production-д https |
 | `FAKE_PAY_AFTER_MS` | | `2000` | Fake провайдер хэдэн ms-ийн дараа автоматаар "төлөгдөх". `0` = гараар |
 | `TEST_DATABASE_URL` | | `...localhost:5433/way_test` | Зөвхөн тестэд |
 
