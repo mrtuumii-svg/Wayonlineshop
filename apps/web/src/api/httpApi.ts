@@ -47,6 +47,11 @@ const DEFAULT_MESSAGE: Record<ApiErrorCode, string> = {
 }
 
 const REQUEST_TIMEOUT_MS = 15_000
+/**
+ * AI чат удаан байж болно (үнэгүй Gemini заримдаа 20с+). Серверийн LLM_TIMEOUT_MS (30с)-ээс УРТ байх ёстой:
+ * AI хэт удаан бол сервер түрүүлж "түр завгүй" гэж эелдэг хариулна, сайт өөрөө бууж өгөхгүй.
+ */
+const CHAT_TIMEOUT_MS = 45_000
 
 export interface HttpApiOptions {
   /** Жишээ нь `/api` (dev proxy) эсвэл `https://api.way.mn` */
@@ -73,7 +78,12 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
   const base = opts.baseUrl.replace(/\/+$/, '')
   const fetchFn = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a))
 
-  async function request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
+  async function request<T>(
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    path: string,
+    body?: unknown,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<T> {
     const headers = new Headers()
     const token = opts.getToken()
     if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -85,7 +95,7 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
         method,
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
       })
     } catch (e) {
       // instanceof DOMException биш — орчин бүр (браузер, Node, jsdom) өөр DOMException класстай
@@ -149,7 +159,7 @@ export function createHttpApi(opts: HttpApiOptions): ApiClient {
     markLessonComplete: (courseId, lessonId) =>
       post<Progress>(`/me/progress/${seg(courseId)}/lessons/${seg(lessonId)}`),
 
-    chat: (input) => post<ChatReply>('/chat', input),
+    chat: (input) => request<ChatReply>('POST', '/chat', input, CHAT_TIMEOUT_MS),
     getConversation: (id) => get<ChatConversation>(`/chat/${seg(id)}`),
     admin,
   }

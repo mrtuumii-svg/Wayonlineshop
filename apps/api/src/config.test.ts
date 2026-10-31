@@ -96,3 +96,11 @@ test('LLM: key заавал биш, хоосон утга нь байхгүйт�
   expect(loadConfig({ ...valid, LLM_API_KEY: 'k' }).LLM_API_KEY).toBe('k')
   expect(() => loadConfig({ ...valid, LLM_BASE_URL: 'not a url' })).toThrow(/LLM_BASE_URL/)
 })
+
+test('LLM_TIMEOUT_MS: анхдагч 30с, .env-ээр өөрчилж болно, хэт бага утга хориотой', () => {
+  expect(loadConfig(valid).LLM_TIMEOUT_MS).toBe(30_000)
+  expect(loadConfig({ ...valid, LLM_TIMEOUT_MS: '35000' }).LLM_TIMEOUT_MS).toBe(35_000)
+  // Сайтын 45с-ээс урт байвал сайт түрүүлж бууж өгнө — хориотой
+  expect(() => loadConfig({ ...valid, LLM_TIMEOUT_MS: '45000' })).toThrow('LLM_TIMEOUT_MS')
+  expect(() => loadConfig({ ...valid, LLM_TIMEOUT_MS: '500' })).toThrow('LLM_TIMEOUT_MS')
+})

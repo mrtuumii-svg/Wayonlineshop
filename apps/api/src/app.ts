@@ -55,7 +55,12 @@ export async function buildApp(
     deps.llm !== undefined
       ? deps.llm
       : config.LLM_API_KEY
-        ? createOpenAiCompatibleLlm({ apiKey: config.LLM_API_KEY, baseUrl: config.LLM_BASE_URL, model: config.LLM_MODEL })
+        ? createOpenAiCompatibleLlm({
+            apiKey: config.LLM_API_KEY,
+            baseUrl: config.LLM_BASE_URL,
+            model: config.LLM_MODEL,
+            timeoutMs: config.LLM_TIMEOUT_MS,
+          })
         : null
   app.decorate('llm', llm)
 

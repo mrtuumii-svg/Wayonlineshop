@@ -27,6 +27,11 @@ const envSchema = z.object({
   /** OpenAI-тэй ижил хэлбэрийн API-ийн хаяг. Анхдагч нь Gemini. */
   LLM_BASE_URL: z.url('URL байх ёстой').default('https://generativelanguage.googleapis.com/v1beta/openai/'),
   LLM_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+  /**
+   * AI-ийн хариуг хэр удаан хүлээх (ms). Сайт чатын хүсэлтэд 45с хүлээдэг тул үүнээс БАГА байх ёстой —
+   * тэгвэл AI удаан үед сервер түрүүлж "түр завгүй" гэж хариулна, сайт бүдэг "хариу өгсөнгүй" гаргахгүй.
+   */
+  LLM_TIMEOUT_MS: z.coerce.number().int().min(1000, 'дор хаяж 1000 (1 секунд)').max(40_000, 'сайтын 45с-ээс бага байх ёстой').default(30_000),
   /** Sliding window: model-д илгээх өмнөх мессежийн тоо. Түүх бүхэлдээ санд үлдэнэ. 0 = түүхгүй. */
   CHAT_HISTORY_WINDOW: z.coerce.number().int().min(0).max(40).default(4),
 })
@@ -44,6 +49,7 @@ export interface Config {
   LLM_API_KEY?: string
   LLM_BASE_URL: string
   LLM_MODEL: string
+  LLM_TIMEOUT_MS: number
   CHAT_HISTORY_WINDOW: number
 }
 
