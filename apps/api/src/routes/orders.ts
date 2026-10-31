@@ -80,29 +80,44 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
     if (!order) throw notFound('Захиалга олдсонгүй')
 
     let status = order.status
-    const expired = expiresAt(order.createdAt).getTime() <= Date.now()
+    const expiry = expiresAt(order.createdAt).getTime()
+    const expired = expiry <= Date.now()
     // Callback хүрэхгүй (localhost) эсвэл алдагдсан үед төлбөрийг провайдероос өөрөө асууна.
-    // Хугацаа дуусахад throttle-оос үл хамааран сүүлийн удаа асууна — сүүлийн секундэд төлсөн мөнгө алдагдахгүй.
-    let checkFailed = false
-    if (
-      status === 'pending' &&
-      order.provider === payments.name &&
-      order.providerInvoiceId &&
-      (expired || throttle.shouldCheck(order.id))
-    ) {
-      try {
-        if ((await payments.checkPayment(order.providerInvoiceId)) === 'paid') {
-          await settleOrder(prisma, order)
-          status = 'paid'
+    // Хугацаа дууссаны дараах ЭХНИЙ poll throttle-ийг алгасна (сүүлийн секундэд төлсөн мөнгө алдагдахгүй),
+    // дараагийнх нь дахин throttle-д баригдана — QPay унасан үед түүнийг дарамтлахгүй.
+    let settledOut = false
+    if (status === 'pending' && order.provider === payments.name && order.providerInvoiceId) {
+      const finalCheck = expired && (throttle.lastCheckedAt(order.id) ?? 0) < expiry
+      if (throttle.shouldCheck(order.id, Date.now(), finalCheck)) {
+        // Хугацаа дууссан бол эхлээд цуцална: цуцалсны дараа хэн ч төлж чадахгүй тул
+        // дараагийн "pending" хариу эцсийнх. Цуцлахаас өмнө шалгавал хооронд нь орсон төлбөр алдагдана.
+        let cancelled = false
+        if (expired) {
+          try {
+            await payments.cancelInvoice(order.providerInvoiceId)
+            cancelled = true
+          } catch (err) {
+            req.log.error({ err }, 'Нэхэмжлэх цуцалж чадсангүй')
+          }
         }
-      } catch (err) {
-        req.log.error({ err }, 'Төлбөрийн статус шалгахад алдаа гарлаа')
-        checkFailed = true
+        try {
+          if ((await payments.checkPayment(order.providerInvoiceId)) === 'paid') {
+            await settleOrder(prisma, order)
+            status = 'paid'
+          } else {
+            settledOut = cancelled
+          }
+        } catch (err) {
+          req.log.error({ err }, 'Төлбөрийн статус шалгахад алдаа гарлаа')
+        }
       }
+    } else {
+      // Провайдерын шалгалтгүй захиалга (өөр провайдер, нэхэмжлэхгүй) — хуучин дүрмээр хугацаа дуусна
+      settledOut = true
     }
 
-    // Шалгаж чадаагүй бол failed болгохгүй — дараагийн poll дахин оролдоно
-    if (status === 'pending' && expired && !checkFailed) {
+    // Цуцалж, шалгаж чадаагүй бол failed болгохгүй — хожуу төлбөр орж болзошгүй, дараагийн poll дахин оролдоно
+    if (status === 'pending' && expired && settledOut) {
       // Энэ хооронд webhook paid болгосон байж болох тул зөвхөн pending-ийг л failed болгоно
       const { count } = await prisma.order.updateMany({
         where: { id: order.id, status: 'pending' },
@@ -134,7 +149,7 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
   })
 
   // QPay-ийн callback гарын үсэггүй — агуулгад нь итгэхгүй, зөвхөн "шалгах" дохио гэж үзнэ.
-  // Хуурамч callback хамгийн муудаа нэг нэмэлт шалгалт л үүсгэнэ. Callback захиалгыг хэзээ ч failed болгохгүй.
+  // Хуурамч callback хамгийн муудаа захиалга тутамд 3 секундэд нэг шалгалт л үүсгэнэ. Callback захиалгыг хэзээ ч failed болгохгүй.
   app.route({
     method: ['GET', 'POST'],
     url: QPAY_CALLBACK_PATH,
@@ -147,7 +162,11 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
         include: { items: { select: { courseId: true } } },
       })
       if (!order) throw notFound('Нэхэмжлэх олдсонгүй')
-      if (order.status === 'paid' || order.provider !== payments.name || !order.providerInvoiceId) return { ok: true }
+      // paid: дууссан. failed: нэхэмжлэх нь цуцлагдсан (эсвэл үүсээгүй) тул төлбөр орох боломжгүй.
+      if (order.status !== 'pending' || order.provider !== payments.name || !order.providerInvoiceId) return { ok: true }
+      // Нэвтрэлтгүй route — нэг захиалгаар QPay-г дарамтлуулахгүй. 200 биш тул QPay дохиогоо дахин илгээнэ,
+      // хэрэглэгч poll хийж байгаа бол тэр нь 3 секундэд шалгана.
+      if (!throttle.shouldCheck(order.id)) throw unavailable(QPAY_UNAVAILABLE)
 
       let status
       try {

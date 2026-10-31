@@ -12,6 +12,12 @@ export interface StubProvider extends PaymentProvider {
   invoiceError: Error | null
   /** `checkPayment`-д ирсэн invoiceId-ууд */
   checks: string[]
+  /** Тавибал `cancelInvoice` шиднэ */
+  cancelError: Error | null
+  /** `cancelInvoice`-д ирсэн invoiceId-ууд */
+  cancels: string[]
+  /** Дуудлагын дараалал: 'cancel' | 'check' */
+  events: string[]
 }
 
 export function createStubProvider(name = 'qpay'): StubProvider {
@@ -21,6 +27,9 @@ export function createStubProvider(name = 'qpay'): StubProvider {
     checkError: null,
     invoiceError: null,
     checks: [],
+    cancelError: null,
+    cancels: [],
+    events: [],
     async createInvoice() {
       if (stub.invoiceError) throw stub.invoiceError
       const invoiceId = `stub_${randomUUID()}`
@@ -31,8 +40,14 @@ export function createStubProvider(name = 'qpay'): StubProvider {
     },
     async checkPayment(invoiceId) {
       stub.checks.push(invoiceId)
+      stub.events.push('check')
       if (stub.checkError) throw stub.checkError
       return stub.status
+    },
+    async cancelInvoice(invoiceId) {
+      stub.cancels.push(invoiceId)
+      stub.events.push('cancel')
+      if (stub.cancelError) throw stub.cancelError
     },
     close() {},
   }

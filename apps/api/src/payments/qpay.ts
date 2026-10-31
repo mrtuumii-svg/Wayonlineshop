@@ -74,20 +74,23 @@ export function createQpayProvider(opts: QpayProviderOptions): PaymentProvider {
     return token.value
   }
 
-  async function call<T>(path: string, payload: unknown): Promise<T> {
-    const post = async () =>
+  /** Bearer token-тэй хүсэлт. 401 ирвэл token-ийг шинэчлээд нэг удаа дахин оролдоно. */
+  async function authorized(path: string, method: 'POST' | 'DELETE', payload?: unknown): Promise<Response> {
+    const once = async () =>
       send(path, {
-        method: 'POST',
+        method,
         headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
       })
-    let res = await post()
-    if (res.status === 401) {
-      // Token хугацаанаас өмнө хүчингүй болсон байж болно — нэг удаа шинэчилнэ
-      token = null
-      res = await post()
-    }
-    return readJson<T>(path, res)
+    const res = await once()
+    if (res.status !== 401) return res
+    // Token хугацаанаас өмнө хүчингүй болсон байж болно
+    token = null
+    return once()
+  }
+
+  async function call<T>(path: string, payload: unknown): Promise<T> {
+    return readJson<T>(path, await authorized(path, 'POST', payload))
   }
 
   return {
@@ -116,6 +119,15 @@ export function createQpayProvider(opts: QpayProviderOptions): PaymentProvider {
         offset: { page_number: 1, page_limit: 100 },
       })
       return res.rows.some((r) => r.payment_status === 'PAID') ? 'paid' : 'pending'
+    },
+
+    async cancelInvoice(invoiceId) {
+      const res = await authorized(`/v2/invoice/${encodeURIComponent(invoiceId)}`, 'DELETE')
+      if (res.ok) return
+      // Давтан цуцлалт (өмнөх оролдлого QPay-д хүрсэн ч хариу нь алдагдсан) — зорилго биелсэн
+      const body = (await res.json().catch(() => null)) as { error?: string } | null
+      if (res.status === 400 && body?.error === 'INVOICE_ALREADY_CANCELED') return
+      throw new QpayError(`QPay /v2/invoice/:id DELETE ${res.status}`)
     },
 
     close() {},

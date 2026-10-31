@@ -58,7 +58,7 @@ Image-ийг дангаар нь: `docker build -f apps/api/Dockerfile -t way-ap
 > тиймээс compose дээр `NODE_ENV=development`. Production болгохын тулд бодит `QPAY_*` мэдээлэл болон https `PUBLIC_API_URL` тавина.
 >
 > QPay-ийн callback гарын үсэггүй тул backend түүнд итгэхгүй — callback ирэхэд болон `GET /orders/:id`-ийн polling үед
-> төлбөрийг QPay API-аас (`/v2/payment/check`) өөрөө шалгана. Sandbox (TEST_MERCHANT)-ийн QR-ийг банкны апп уншихгүй —
+> төлбөрийг QPay API-аас (`/v2/payment/check`) өөрөө шалгана. Нэхэмжлэхийн хугацаа (10 мин) дуусахад түүнийг QPay дээр цуцалсны дараа л захиалга `failed` болно. Sandbox (TEST_MERCHANT)-ийн QR-ийг банкны апп уншихгүй —
 > sandbox дээр нэхэмжлэх/QR үүсэхийг л шалгана, "төлөгдсөн" урсгалыг fake провайдер болон тестүүд шалгана.
 
 ### API-ийн орчны хувьсагчид

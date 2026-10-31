@@ -21,3 +21,12 @@ test('хэмжээ хэтэрвэл хамгийн хуучныг хасна', (
   expect(t.shouldCheck('o1', 1)).toBe(true)
   expect(t.shouldCheck('o3', 1)).toBe(false)
 })
+
+test('force нь интервалаас үл хамааран зөвшөөрч, цагийг бүртгэнэ', () => {
+  const t = createCheckThrottle()
+  expect(t.lastCheckedAt('o1')).toBeUndefined()
+  t.shouldCheck('o1', 1000)
+  expect(t.shouldCheck('o1', 1500, true)).toBe(true)
+  expect(t.lastCheckedAt('o1')).toBe(1500)
+  expect(t.shouldCheck('o1', 1600)).toBe(false)
+})

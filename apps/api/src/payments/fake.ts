@@ -85,6 +85,8 @@ export function createFakeProvider(opts: FakeProviderOptions): PaymentProvider {
       return 'pending'
     },
 
+    async cancelInvoice() {},
+
     close() {
       closed = true
       for (const t of timers) clearTimeout(t)

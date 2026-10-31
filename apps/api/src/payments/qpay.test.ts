@@ -172,6 +172,44 @@ describe('checkPayment', () => {
   })
 })
 
+describe('cancelInvoice', () => {
+  it('DELETE /v2/invoice/:id-ээр цуцална', async () => {
+    const s = stubFetch({ '/v2/auth/token': () => tokenResponse(), '/v2/invoice/inv_1': () => json({}) })
+
+    await provider(s.fetch).cancelInvoice('inv_1')
+
+    const [del] = s.to('/v2/invoice/inv_1')
+    expect(del!.init.method).toBe('DELETE')
+    expect(header(del!, 'authorization')).toBe('Bearer tok')
+  })
+
+  it('аль хэдийн цуцлагдсан бол амжилттай гэж үзнэ', async () => {
+    const s = stubFetch({
+      '/v2/auth/token': () => tokenResponse(),
+      '/v2/invoice/inv_1': () => json({ error: 'INVOICE_ALREADY_CANCELED', message: 'Нэхэмжлэл цуцлагдсан байна' }, 400),
+    })
+
+    await expect(provider(s.fetch).cancelInvoice('inv_1')).resolves.toBeUndefined()
+  })
+
+  it('бусад алдаа (төлөгдсөн г.м.) нь QpayError', async () => {
+    const s = stubFetch({
+      '/v2/auth/token': () => tokenResponse(),
+      '/v2/invoice/inv_1': () => json({ error: 'INVOICE_PAID' }, 400),
+    })
+
+    await expect(provider(s.fetch).cancelInvoice('inv_1')).rejects.toBeInstanceOf(QpayError)
+  })
+
+  it('invoiceId-г path-д encode хийнэ', async () => {
+    const s = stubFetch({ '/v2/auth/token': () => tokenResponse(), '/v2/invoice/a%2Fb': () => json({}) })
+
+    await provider(s.fetch).cancelInvoice('a/b')
+
+    expect(s.to('/v2/invoice/a%2Fb')).toHaveLength(1)
+  })
+})
+
 describe('алдаа', () => {
   it('OK биш хариу нь QpayError, мессежид secret байхгүй', async () => {
     const s = stubFetch({

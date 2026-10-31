@@ -33,6 +33,11 @@ export interface PaymentProvider {
    * зөвхөн үүнд итгэнэ. Провайдер хүрэхгүй бол шиднэ.
    */
   checkPayment(invoiceId: string): Promise<PaymentStatus>
+  /**
+   * Нэхэмжлэхийг провайдер дээр цуцална — үүний дараа түүгээр төлөх боломжгүй.
+   * Аль хэдийн цуцлагдсан бол амжилттай. Цуцалж чадаагүй (төлөгдсөн, сүлжээ г.м.) бол шиднэ.
+   */
+  cancelInvoice(invoiceId: string): Promise<void>
   /** Апп хаагдахад хүлээгдэж буй ажлыг (таймер г.м.) цуцална */
   close(): void
 }

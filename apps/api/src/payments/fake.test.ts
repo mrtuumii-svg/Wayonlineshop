@@ -6,3 +6,8 @@ test('fake-ийн checkPayment үргэлж pending — мөнгө зөвхөн 
 
   expect(await p.checkPayment(invoiceId)).toBe('pending')
 })
+
+test('fake-ийн cancelInvoice юу ч хийхгүй', async () => {
+  const p = createFakeProvider({ secret: 's'.repeat(32), payAfterMs: 0, deliver: async () => {} })
+  await expect(p.cancelInvoice('inv')).resolves.toBeUndefined()
+})
