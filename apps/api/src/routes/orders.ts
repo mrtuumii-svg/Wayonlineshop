@@ -2,7 +2,8 @@ import type { Order, PaymentIntent } from '@way/contract'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { requireAuth } from '../auth/requireAuth.js'
-import { notFound, unavailable, validation } from '../errors.js'
+import { AppError, notFound, unavailable, validation } from '../errors.js'
+import { createCheckThrottle } from '../payments/checkThrottle.js'
 import { QPAY_CALLBACK_PATH } from '../payments/qpay.js'
 import { settleOrder } from '../payments/settle.js'
 
@@ -25,6 +26,7 @@ const expiresAt = (createdAt: Date) => new Date(createdAt.getTime() + INVOICE_TT
 
 export const orderRoutes: FastifyPluginAsync = async (app) => {
   const { prisma, payments } = app
+  const throttle = createCheckThrottle()
 
   app.post('/orders', { preHandler: requireAuth }, async (req, reply) => {
     const parsed = checkoutBody.safeParse(req.body)
@@ -54,7 +56,9 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
       invoice = await payments.createInvoice({ orderId: order.id, amount: order.total })
     } catch (err) {
       await prisma.order.update({ where: { id: order.id }, data: { status: 'failed' } })
-      throw err
+      if (err instanceof AppError) throw err
+      req.log.error({ err }, 'Төлбөрийн нэхэмжлэх үүсгэж чадсангүй')
+      throw unavailable(QPAY_UNAVAILABLE)
     }
     await prisma.order.update({ where: { id: order.id }, data: { providerInvoiceId: invoice.invoiceId } })
 
@@ -76,7 +80,29 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
     if (!order) throw notFound('Захиалга олдсонгүй')
 
     let status = order.status
-    if (status === 'pending' && expiresAt(order.createdAt).getTime() <= Date.now()) {
+    const expired = expiresAt(order.createdAt).getTime() <= Date.now()
+    // Callback хүрэхгүй (localhost) эсвэл алдагдсан үед төлбөрийг провайдероос өөрөө асууна.
+    // Хугацаа дуусахад throttle-оос үл хамааран сүүлийн удаа асууна — сүүлийн секундэд төлсөн мөнгө алдагдахгүй.
+    let checkFailed = false
+    if (
+      status === 'pending' &&
+      order.provider === payments.name &&
+      order.providerInvoiceId &&
+      (expired || throttle.shouldCheck(order.id))
+    ) {
+      try {
+        if ((await payments.checkPayment(order.providerInvoiceId)) === 'paid') {
+          await settleOrder(prisma, order)
+          status = 'paid'
+        }
+      } catch (err) {
+        req.log.error({ err }, 'Төлбөрийн статус шалгахад алдаа гарлаа')
+        checkFailed = true
+      }
+    }
+
+    // Шалгаж чадаагүй бол failed болгохгүй — дараагийн poll дахин оролдоно
+    if (status === 'pending' && expired && !checkFailed) {
       // Энэ хооронд webhook paid болгосон байж болох тул зөвхөн pending-ийг л failed болгоно
       const { count } = await prisma.order.updateMany({
         where: { id: order.id, status: 'pending' },
