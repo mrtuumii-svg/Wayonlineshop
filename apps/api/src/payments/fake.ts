@@ -80,6 +80,13 @@ export function createFakeProvider(opts: FakeProviderOptions): PaymentProvider {
       return { invoiceId: parsed.data.invoiceId, paid: parsed.data.status === 'paid' }
     },
 
+    // Fake-д мөнгө зөвхөн гарын үсэгтэй webhook-оор орно — асуухад үргэлж "хүлээгдэж буй"
+    async checkPayment() {
+      return 'pending'
+    },
+
+    async cancelInvoice() {},
+
     close() {
       closed = true
       for (const t of timers) clearTimeout(t)

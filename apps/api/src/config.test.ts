@@ -96,3 +96,74 @@ test('LLM: key заавал биш, хоосон утга нь байхгүйт�
   expect(loadConfig({ ...valid, LLM_API_KEY: 'k' }).LLM_API_KEY).toBe('k')
   expect(() => loadConfig({ ...valid, LLM_BASE_URL: 'not a url' })).toThrow(/LLM_BASE_URL/)
 })
+
+describe('QPay', () => {
+  const real = { QPAY_CLIENT_ID: 'my-id', QPAY_CLIENT_SECRET: 'my-secret', QPAY_INVOICE_CODE: 'MY_INVOICE' }
+  const SANDBOX = {
+    baseUrl: 'https://merchant-sandbox.qpay.mn',
+    clientId: 'TEST_MERCHANT',
+    clientSecret: '123456',
+    invoiceCode: 'TEST_INVOICE',
+    sandbox: true,
+  }
+
+  test('PAYMENT_PROVIDER defaults to fake and accepts qpay', () => {
+    expect(loadConfig(valid).PAYMENT_PROVIDER).toBe('fake')
+    expect(loadConfig({ ...valid, PAYMENT_PROVIDER: 'qpay' }).PAYMENT_PROVIDER).toBe('qpay')
+    expect(() => loadConfig({ ...valid, PAYMENT_PROVIDER: 'stripe' })).toThrow(/PAYMENT_PROVIDER/)
+  })
+
+  test('qpay without credentials resolves to the sandbox', () => {
+    expect(loadConfig({ ...valid, PAYMENT_PROVIDER: 'qpay' }).qpay).toEqual(SANDBOX)
+  })
+
+  test('empty QPAY_* strings count as absent', () => {
+    const c = loadConfig({ ...valid, PAYMENT_PROVIDER: 'qpay', QPAY_CLIENT_ID: '', QPAY_CLIENT_SECRET: '', QPAY_INVOICE_CODE: '' })
+    expect(c.qpay).toEqual(SANDBOX)
+  })
+
+  test('real credentials default to the production base url', () => {
+    expect(loadConfig({ ...valid, ...real }).qpay).toEqual({
+      baseUrl: 'https://merchant.qpay.mn',
+      clientId: 'my-id',
+      clientSecret: 'my-secret',
+      invoiceCode: 'MY_INVOICE',
+      sandbox: false,
+    })
+    expect(loadConfig({ ...valid, ...real, QPAY_BASE_URL: 'https://qpay.example.mn' }).qpay.baseUrl).toBe(
+      'https://qpay.example.mn',
+    )
+  })
+
+  test('partial QPay credentials are rejected by name', () => {
+    try {
+      loadConfig({ ...valid, QPAY_CLIENT_ID: 'my-id' })
+      throw new Error('унах ёстой байсан')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConfigError)
+      const msg = (err as ConfigError).message
+      expect(msg).toContain('QPAY_CLIENT_SECRET')
+      expect(msg).toContain('QPAY_INVOICE_CODE')
+      expect(msg).not.toContain('my-id')
+    }
+  })
+
+  test('PUBLIC_API_URL is validated and its trailing slash removed', () => {
+    expect(loadConfig({ ...valid, PUBLIC_API_URL: 'https://api.way.mn/' }).PUBLIC_API_URL).toBe('https://api.way.mn')
+    expect(() => loadConfig({ ...valid, PUBLIC_API_URL: 'not a url' })).toThrow(/PUBLIC_API_URL/)
+    expect(loadConfig({ ...valid, PUBLIC_API_URL: '' }).PUBLIC_API_URL).toBeUndefined()
+  })
+
+  test('production rejects qpay sandbox', () => {
+    expect(() =>
+      loadConfig({ ...valid, NODE_ENV: 'production', PAYMENT_PROVIDER: 'qpay', PUBLIC_API_URL: 'https://api.way.mn' }),
+    ).toThrow(/sandbox/)
+  })
+
+  test('production qpay requires an https PUBLIC_API_URL', () => {
+    const prod = { ...valid, ...real, NODE_ENV: 'production', PAYMENT_PROVIDER: 'qpay' }
+    expect(() => loadConfig(prod)).toThrow(/PUBLIC_API_URL/)
+    expect(() => loadConfig({ ...prod, PUBLIC_API_URL: 'http://api.way.mn' })).toThrow(/PUBLIC_API_URL/)
+    expect(loadConfig({ ...prod, PUBLIC_API_URL: 'https://api.way.mn' }).PUBLIC_API_URL).toBe('https://api.way.mn')
+  })
+})

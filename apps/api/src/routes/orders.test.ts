@@ -1,7 +1,10 @@
 import type { FastifyInstance } from 'fastify'
 import { seed } from '../../prisma/seed.js'
 import { signFakeWebhook } from '../payments/fake.js'
+import { settleOrder } from '../payments/settle.js'
+import { INVOICE_TTL_MS } from './orders.js'
 import { createTestPrisma, resetDb } from '../test/db.js'
+import { createStubProvider, type StubProvider } from '../test/stubProvider.js'
 import { buildTestApp, testConfig } from '../test/testApp.js'
 
 const prisma = createTestPrisma()
@@ -331,5 +334,298 @@ describe('fake провайдерын автомат төлбөр (dev)', () => 
     expect(order.status).toBe('pending')
     app = await buildTestApp()
     await app.ready()
+  })
+})
+
+describe('QPay callback', () => {
+  let stub: StubProvider
+
+  beforeEach(async () => {
+    await app.close()
+    stub = createStubProvider()
+    app = await buildTestApp({ PAYMENT_PROVIDER: 'qpay' }, { payments: stub })
+    await app.ready()
+  })
+
+  const callback = (q: string, method: 'GET' | 'POST' = 'GET', payload?: object) =>
+    app.inject({ method, url: `/payments/qpay/callback${q}`, ...(payload ? { payload } : {}) })
+
+  async function pendingOrder() {
+    const user = await registerUser()
+    const { orderId } = (await checkout(user.token, ['c1'])).json()
+    return { ...user, orderId }
+  }
+
+  const statusOf = async (orderId: string) => (await prisma.order.findUniqueOrThrow({ where: { id: orderId } })).status
+
+  it('QPay төлсөн гэвэл захиалга paid болж эрх үүснэ', async () => {
+    const { id, orderId } = await pendingOrder()
+    stub.status = 'paid'
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ ok: true })
+    expect(stub.checks).toEqual([await invoiceIdOf(orderId)])
+    expect(await statusOf(orderId)).toBe('paid')
+    expect(await prisma.enrollment.count({ where: { userId: id } })).toBe(1)
+  })
+
+  it('POST callback ч ажиллана', async () => {
+    const { orderId } = await pendingOrder()
+    stub.status = 'paid'
+
+    const res = await callback(`?order=${orderId}`, 'POST', { payment_id: 'x' })
+
+    expect(res.statusCode).toBe(200)
+    expect(await statusOf(orderId)).toBe('paid')
+  })
+
+  it('QPay pending гэвэл юу ч өөрчлөгдөхгүй', async () => {
+    const { id, orderId } = await pendingOrder()
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(200)
+    expect(await statusOf(orderId)).toBe('pending')
+    expect(await prisma.enrollment.count({ where: { userId: id } })).toBe(0)
+  })
+
+  it('callback-ийн биед итгэхгүй — зөвхөн QPay API-ийн хариунд', async () => {
+    const { orderId } = await pendingOrder()
+
+    await callback(`?order=${orderId}`, 'POST', { payment_status: 'PAID', invoice_id: await invoiceIdOf(orderId) })
+
+    expect(await statusOf(orderId)).toBe('pending')
+  })
+
+  it.each([[''], ['?order='], [`?order=${'x'.repeat(65)}`], ['?order=nope']])(
+    'order байхгүй, буруу эсвэл танихгүй (%s) → 404',
+    async (q) => {
+      const res = await callback(q)
+
+      expect(res.statusCode).toBe(404)
+      expect(stub.checks).toEqual([])
+    },
+  )
+
+  it('аль хэдийн paid захиалгад QPay дахин дуудагдахгүй', async () => {
+    const { orderId } = await pendingOrder()
+    stub.status = 'paid'
+    await callback(`?order=${orderId}`)
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(200)
+    expect(stub.checks).toHaveLength(1)
+  })
+
+  it('өөр провайдерын (fake) захиалгад QPay дуудагдахгүй', async () => {
+    const { orderId } = await pendingOrder()
+    await prisma.order.update({ where: { id: orderId }, data: { provider: 'fake' } })
+    stub.status = 'paid'
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(200)
+    expect(stub.checks).toEqual([])
+    expect(await statusOf(orderId)).toBe('pending')
+  })
+
+  it('QPay алдаа өгвөл 503, захиалга хөдлөхгүй', async () => {
+    const { orderId } = await pendingOrder()
+    stub.checkError = new Error('down')
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(503)
+    expect(res.json().code).toBe('UNAVAILABLE')
+    expect(await statusOf(orderId)).toBe('pending')
+  })
+
+  it('давхар callback эрхийг давхардуулахгүй', async () => {
+    const { id, orderId } = await pendingOrder()
+    stub.status = 'paid'
+    // Эхнийх paid болгоно; хоёр дахь нь paid-ийг алгасна. Зэрэг ирвэл доорх тест шалгана.
+    await callback(`?order=${orderId}`)
+    await callback(`?order=${orderId}`)
+
+    expect(await prisma.enrollment.count({ where: { userId: id } })).toBe(1)
+  })
+
+  it('settleOrder-ийг зэрэг дуудахад эрх нэг л удаа үүснэ (callback ба poll зэрэг)', async () => {
+    const { id, orderId } = await pendingOrder()
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } })
+
+    await Promise.all([settleOrder(prisma, order), settleOrder(prisma, order)])
+
+    expect(await prisma.enrollment.count({ where: { userId: id } })).toBe(1)
+    expect(await statusOf(orderId)).toBe('paid')
+  })
+
+  it('failed захиалгад QPay дуудагдахгүй — нэхэмжлэх нь цуцлагдсан', async () => {
+    const { orderId } = await pendingOrder()
+    await prisma.order.update({ where: { id: orderId }, data: { status: 'failed' } })
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(200)
+    expect(stub.checks).toEqual([])
+  })
+
+  it('нэг захиалгад 3 секундын дотор давтсан callback → 503 (QPay дахин илгээнэ), QPay дуудагдахгүй', async () => {
+    const { orderId } = await pendingOrder()
+    await callback(`?order=${orderId}`)
+
+    const res = await callback(`?order=${orderId}`)
+
+    expect(res.statusCode).toBe(503)
+    expect(res.json().code).toBe('UNAVAILABLE')
+    expect(stub.checks).toHaveLength(1)
+  })
+})
+
+describe('GET /orders/:id — провайдероос шалгах', () => {
+  let stub: StubProvider
+
+  beforeEach(async () => {
+    await app.close()
+    stub = createStubProvider()
+    app = await buildTestApp({ PAYMENT_PROVIDER: 'qpay' }, { payments: stub })
+    await app.ready()
+  })
+
+  async function pendingOrder() {
+    const user = await registerUser()
+    const { orderId } = (await checkout(user.token, ['c1'])).json()
+    return { ...user, orderId }
+  }
+
+  const expire = (orderId: string) =>
+    prisma.order.update({ where: { id: orderId }, data: { createdAt: new Date(Date.now() - 11 * 60_000) } })
+
+  /** Хугацаа дуусахаас 1 секундын өмнөх захиалга. Дараа нь `passSeconds`-ээр цагийг урагшлуулна. */
+  const nearExpiry = (orderId: string) =>
+    prisma.order.update({ where: { id: orderId }, data: { createdAt: new Date(Date.now() - INVOICE_TTL_MS + 1000) } })
+  // Зөвхөн Date-ийг хуурна — таймер, сүлжээ, Prisma хэвийн ажиллана
+  const passSeconds = (s: number) => vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + s * 1000 })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('QPay төлсөн бол poll paid буцааж эрх үүсгэнэ', async () => {
+    const { id, token, orderId } = await pendingOrder()
+    stub.status = 'paid'
+
+    expect((await getOrder(token, orderId)).json().status).toBe('paid')
+    expect(await prisma.enrollment.count({ where: { userId: id } })).toBe(1)
+  })
+
+  it('3 секундын дотор дахин poll хийхэд QPay дуудагдахгүй', async () => {
+    const { token, orderId } = await pendingOrder()
+
+    await getOrder(token, orderId)
+    await getOrder(token, orderId)
+
+    expect(stub.checks).toHaveLength(1)
+  })
+
+  it('poll үед QPay алдаа → pending, 200', async () => {
+    const { token, orderId } = await pendingOrder()
+    stub.checkError = new Error('down')
+
+    const res = await getOrder(token, orderId)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().status).toBe('pending')
+  })
+
+  it('хугацаа дуусахад throttle-оос үл хамааран сүүлийн шалгалт хийнэ — төлсөн бол paid', async () => {
+    const { token, orderId } = await pendingOrder()
+    await nearExpiry(orderId)
+    await getOrder(token, orderId)
+    passSeconds(2)
+    stub.status = 'paid'
+
+    expect((await getOrder(token, orderId)).json().status).toBe('paid')
+    expect(stub.checks).toHaveLength(2)
+  })
+
+  it('хугацаа дуусахад эхлээд нэхэмжлэхийг цуцалж, дараа нь шалгаад failed болгоно', async () => {
+    const { token, orderId } = await pendingOrder()
+    await nearExpiry(orderId)
+    await getOrder(token, orderId)
+    passSeconds(2)
+
+    expect((await getOrder(token, orderId)).json().status).toBe('failed')
+    expect(stub.cancels).toEqual([await invoiceIdOf(orderId)])
+    // Цуцлахаас өмнө шалгавал хооронд нь орсон төлбөр алдагдана
+    expect(stub.events).toEqual(['check', 'cancel', 'check'])
+  })
+
+  it('цуцалж чадаагүй бол failed болгохгүй (хожуу төлбөр орж болзошгүй)', async () => {
+    const { token, orderId } = await pendingOrder()
+    await expire(orderId)
+    stub.cancelError = new Error('down')
+
+    expect((await getOrder(token, orderId)).json().status).toBe('pending')
+    expect(await prisma.order.findUniqueOrThrow({ where: { id: orderId } })).toMatchObject({ status: 'pending' })
+    expect(stub.checks).toHaveLength(1)
+  })
+
+  it('цуцалж чадаагүй ч төлөгдсөн бол paid', async () => {
+    const { token, orderId } = await pendingOrder()
+    await expire(orderId)
+    stub.cancelError = new Error('INVOICE_PAID')
+    stub.status = 'paid'
+
+    expect((await getOrder(token, orderId)).json().status).toBe('paid')
+  })
+
+  it('хугацаа дууссан ба QPay алдаа → failed болохгүй', async () => {
+    const { token, orderId } = await pendingOrder()
+    await expire(orderId)
+    stub.checkError = new Error('down')
+
+    expect((await getOrder(token, orderId)).json().status).toBe('pending')
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: orderId } })).status).toBe('pending')
+  })
+
+  it('хугацаа дууссан ба QPay унасан үед давтан poll throttle-д баригдана', async () => {
+    const { token, orderId } = await pendingOrder()
+    await expire(orderId)
+    stub.checkError = new Error('down')
+
+    await getOrder(token, orderId)
+    await getOrder(token, orderId)
+
+    expect(stub.checks).toHaveLength(1)
+  })
+
+  it('өөр провайдерын захиалгыг poll хийхэд QPay дуудагдахгүй', async () => {
+    const { token, orderId } = await pendingOrder()
+    await prisma.order.update({ where: { id: orderId }, data: { provider: 'fake' } })
+
+    await getOrder(token, orderId)
+
+    expect(stub.checks).toEqual([])
+  })
+})
+
+describe('POST /orders — QPay алдаа', () => {
+  it('createInvoice алдаа → 503, захиалга failed', async () => {
+    await app.close()
+    const stub = createStubProvider()
+    stub.invoiceError = new Error('down')
+    app = await buildTestApp({ PAYMENT_PROVIDER: 'qpay' }, { payments: stub })
+    const { id, token } = await registerUser()
+
+    const res = await checkout(token, ['c1'])
+
+    expect(res.statusCode).toBe(503)
+    expect(res.json()).toEqual({ code: 'UNAVAILABLE', message: 'QPay-тэй холбогдож чадсангүй. Дахин оролдоно уу.' })
+    const orders = await prisma.order.findMany({ where: { userId: id } })
+    expect(orders.map((o) => o.status)).toEqual(['failed'])
   })
 })
