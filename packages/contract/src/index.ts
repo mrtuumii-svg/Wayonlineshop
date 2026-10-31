@@ -70,10 +70,14 @@ export interface Paginated<T> {
   limit: number
 }
 
+export type Role = 'user' | 'admin'
+
 export interface User {
   id: string
   name: string
   email: string
+  /** Хуучин backend илгээдэггүй тул заавал биш. Байхгүй бол энгийн хэрэглэгч гэж үзнэ */
+  role?: Role
 }
 
 /** Бүртгүүлэх/нэвтрэхийн хариу. Токеныг `Authorization: Bearer <token>` толгойд илгээнэ. */
@@ -121,11 +125,12 @@ export interface CourseFilter {
 /**
  * Сервер болон клиентийн алдааны нэгдсэн код. HTTP status-тай 1:1 тааруулагдана:
  * VALIDATION→400, UNAUTHORIZED→401, FORBIDDEN→403, NOT_FOUND→404,
- * RATE_LIMITED→429, UNKNOWN→500, UNAVAILABLE→503.
+ * CONFLICT→409, RATE_LIMITED→429, UNKNOWN→500, UNAVAILABLE→503.
  */
 export type ApiErrorCode =
   | 'UNAUTHORIZED'
   | 'NOT_FOUND'
+  | 'CONFLICT'
   | 'FORBIDDEN'
   | 'VALIDATION'
   | 'RATE_LIMITED'
@@ -154,3 +159,49 @@ export interface ChatConversation {
   id: string
   messages: ChatMessage[]
 }
+
+// ── Админ ──────────────────────────────────────────────────────────────
+
+export interface AdminUser extends User {
+  role: Role
+  /** ISO огноо */
+  createdAt: string
+}
+
+export interface AdminOrder {
+  id: string
+  status: OrderStatus
+  total: number
+  createdAt: string
+  user: { name: string; email: string }
+  /** Худалдан авах үеийн үнэ (snapshot) */
+  items: { title: string; price: number }[]
+}
+
+export interface SalesReport {
+  /** Зөвхөн төлөгдсөн захиалгын нийлбэр */
+  revenue: number
+  orders: Partial<Record<OrderStatus, number>>
+  topCourses: { courseId: string; title: string; sold: number; revenue: number }[]
+}
+
+export interface LessonInput {
+  title: string
+  durationSec: number
+  isPreview: boolean
+  youtubeId: string
+}
+
+export interface CourseInput {
+  slug: string
+  title: string
+  description: string
+  price: number
+  thumbnail: string
+  category: string
+  level: Level
+  instructorId: string
+  sections: { title: string; lessons: LessonInput[] }[]
+}
+
+export type CourseUpdate = Partial<Pick<CourseInput, 'title' | 'description' | 'price' | 'thumbnail' | 'category' | 'level'>>

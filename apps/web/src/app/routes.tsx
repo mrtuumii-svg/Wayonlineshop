@@ -1,5 +1,13 @@
 import type { RouteObject } from 'react-router'
+import { AdminLayout } from '@/features/admin/AdminLayout'
+import { RequireAdmin } from '@/features/auth/RequireAdmin'
 import { RequireAuth } from '@/features/auth/RequireAuth'
+import { CourseEditPage } from '@/pages/admin/CourseEditPage'
+import { CourseNewPage } from '@/pages/admin/CourseNewPage'
+import { AdminCoursesPage } from '@/pages/admin/CoursesPage'
+import { DashboardPage } from '@/pages/admin/DashboardPage'
+import { OrdersPage } from '@/pages/admin/OrdersPage'
+import { UsersPage } from '@/pages/admin/UsersPage'
 import { CartPage } from '@/pages/CartPage'
 import { CatalogPage } from '@/pages/CatalogPage'
 import { CheckoutPage } from '@/pages/CheckoutPage'
@@ -46,6 +54,22 @@ export const routes: RouteObject[] = [
             <LearnPage />
           </RequireAuth>
         ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <RequireAdmin>
+            <AdminLayout />
+          </RequireAdmin>
+        ),
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'courses', element: <AdminCoursesPage /> },
+          { path: 'courses/new', element: <CourseNewPage /> },
+          { path: 'courses/:slug/edit', element: <CourseEditPage /> },
+          { path: 'orders', element: <OrdersPage /> },
+          { path: 'users', element: <UsersPage /> },
+        ],
       },
       { path: '*', element: <NotFoundPage /> },
     ],

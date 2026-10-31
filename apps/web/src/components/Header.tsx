@@ -10,6 +10,7 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
 
 export function Header() {
   const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.role === 'admin'
   const clear = useAuthStore((s) => s.clear)
   const cartCount = useCartStore((s) => s.courseIds.length)
   const navigate = useNavigate()
@@ -24,6 +25,11 @@ export function Header() {
           <NavLink to="/courses" className={(s) => `${navClass(s)} whitespace-nowrap`}>
             Хичээлүүд
           </NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={(s) => `${navClass(s)} whitespace-nowrap`}>
+              Удирдлага
+            </NavLink>
+          )}
           {user && (
             <NavLink to="/my-courses" className={(s) => `${navClass(s)} whitespace-nowrap`}>
               Миний хичээлүүд

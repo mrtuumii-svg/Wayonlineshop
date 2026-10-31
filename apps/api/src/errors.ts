@@ -19,6 +19,7 @@ export const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  CONFLICT: 409,
   RATE_LIMITED: 429,
   UNKNOWN: 500,
   UNAVAILABLE: 503,
@@ -37,4 +38,5 @@ export const validation = (message: string) => new AppError('VALIDATION', messag
 export const unauthorized = (message = 'Нэвтэрнэ үү') => new AppError('UNAUTHORIZED', message)
 export const forbidden = (message = 'Танд хандах эрх байхгүй') => new AppError('FORBIDDEN', message)
 export const notFound = (message = 'Олдсонгүй') => new AppError('NOT_FOUND', message)
+export const conflict = (message: string) => new AppError('CONFLICT', message)
 export const unavailable = (message: string) => new AppError('UNAVAILABLE', message)

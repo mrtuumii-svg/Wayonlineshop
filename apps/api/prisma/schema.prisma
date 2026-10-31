@@ -18,6 +18,8 @@ model User {
   /// Хадгалахаас өмнө trim().toLowerCase() хийгдэнэ
   email        String           @unique
   passwordHash String
+  /// admin эрхийг зөвхөн `npm run make-admin` скриптээр өгнө — API-аар хэзээ ч
+  role         Role             @default(user)
   createdAt    DateTime         @default(now())
   orders       Order[]
   enrollments  Enrollment[]
@@ -155,6 +157,11 @@ model Message {
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+enum Role {
+  user
+  admin
 }
 
 enum Level {

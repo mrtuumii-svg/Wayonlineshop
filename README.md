@@ -27,9 +27,20 @@ cp apps/api/.env.example apps/api/.env
 npm run db:deploy -w @way/api        # migration хэрэгжүүлэх
 npm run db:seed -w @way/api          # 8 хичээл, 6 багш оруулах
 npm run db:migrate -w @way/api       # schema.prisma өөрчилсний дараа шинэ migration
+npm run db:generate -w @way/api      # Prisma 7: migrate-ийн дараа client-ийг заавал дахин үүсгэнэ
 ```
 
 Өөр тестийн сан ашиглах бол `TEST_DATABASE_URL`-ээр заана.
+
+### Админ эрх
+
+Сайтаар бүртгүүлсэн хэрэглэгчийг админ болгоход (API-аар боломжгүй, зөвхөн DB-д хандах эрхтэй хүн):
+
+```bash
+npm run make-admin -w @way/api -- bat@example.com
+```
+
+Дараа нь тэр хэрэглэгч нэвтрэхэд толгой хэсэгт **«Удирдлага»** цэс гарна (`/admin`): самбар (орлого), хичээл нэмэх/засах/устгах, захиалга, хэрэглэгчдийн эрх.
 
 ### API-г Docker-оор ажиллуулах
 
