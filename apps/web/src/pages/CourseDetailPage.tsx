@@ -7,6 +7,8 @@ import { ErrorState, Skeleton } from '@/components/states'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useCartStore } from '@/features/cart/cartStore'
 import { CurriculumList } from '@/features/course/CurriculumList'
+import { DemoReviews } from '@/features/course/DemoReviews'
+import { demoReviewsEnabled } from '@/features/course/demoReviewData'
 import { useCourse, useMyCourses } from '@/features/course/queries'
 import { VideoPlayer } from '@/features/learning/VideoPlayer'
 import { formatPrice, levelLabel } from '@/lib/format'
@@ -77,6 +79,8 @@ export function CourseDetailPage() {
             <p className="text-sm text-slate-600">{course.instructor.bio}</p>
           </div>
         </section>
+
+        {demoReviewsEnabled() && <DemoReviews courseId={course.id} />}
       </div>
 
       <aside className="h-fit space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-24">
