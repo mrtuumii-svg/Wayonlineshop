@@ -2,7 +2,9 @@ import type { Order, PaymentIntent } from '@way/contract'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { requireAuth } from '../auth/requireAuth.js'
-import { notFound, validation } from '../errors.js'
+import { notFound, unavailable, validation } from '../errors.js'
+import { QPAY_CALLBACK_PATH } from '../payments/qpay.js'
+import { settleOrder } from '../payments/settle.js'
 
 /** Нэхэмжлэхийн хүчинтэй хугацаа. Дууссан pending захиалга `failed` болно. */
 export const INVOICE_TTL_MS = 10 * 60 * 1000
@@ -14,6 +16,10 @@ const checkoutBody = z.object({
     .min(1, 'Сагс хоосон байна')
     .max(MAX_ITEMS, `Нэг удаад ${MAX_ITEMS}-аас олон хичээл авах боломжгүй`),
 })
+
+const callbackQuery = z.object({ order: z.string().min(1).max(64) })
+
+export const QPAY_UNAVAILABLE = 'QPay-тэй холбогдож чадсангүй. Дахин оролдоно уу.'
 
 const expiresAt = (createdAt: Date) => new Date(createdAt.getTime() + INVOICE_TTL_MS)
 
@@ -92,20 +98,41 @@ export const orderRoutes: FastifyPluginAsync = async (app) => {
     if (!order) throw notFound('Нэхэмжлэх олдсонгүй')
 
     if (paid) {
-      // Мөнгө орсон бол хугацаа дууссан (failed) захиалгад ч эрх өгнө.
-      // createMany + skipDuplicates (ON CONFLICT DO NOTHING) — давтан/зэрэг ирсэн webhook эрхийг давхардуулахгүй.
-      await prisma.$transaction([
-        prisma.order.update({ where: { id: order.id }, data: { status: 'paid' } }),
-        prisma.enrollment.createMany({
-          data: order.items.map((i) => ({ userId: order.userId, courseId: i.courseId, orderId: order.id })),
-          skipDuplicates: true,
-        }),
-      ])
+      await settleOrder(prisma, order)
     } else {
       // Төлөгдсөн захиалгыг хожуу ирсэн "failed" буцааж болохгүй
       await prisma.order.updateMany({ where: { id: order.id, status: { not: 'paid' } }, data: { status: 'failed' } })
     }
 
     return { ok: true }
+  })
+
+  // QPay-ийн callback гарын үсэггүй — агуулгад нь итгэхгүй, зөвхөн "шалгах" дохио гэж үзнэ.
+  // Хуурамч callback хамгийн муудаа нэг нэмэлт шалгалт л үүсгэнэ. Callback захиалгыг хэзээ ч failed болгохгүй.
+  app.route({
+    method: ['GET', 'POST'],
+    url: QPAY_CALLBACK_PATH,
+    handler: async (req) => {
+      const parsed = callbackQuery.safeParse(req.query)
+      if (!parsed.success) throw notFound('Нэхэмжлэх олдсонгүй')
+
+      const order = await prisma.order.findUnique({
+        where: { id: parsed.data.order },
+        include: { items: { select: { courseId: true } } },
+      })
+      if (!order) throw notFound('Нэхэмжлэх олдсонгүй')
+      if (order.status === 'paid' || order.provider !== payments.name || !order.providerInvoiceId) return { ok: true }
+
+      let status
+      try {
+        status = await payments.checkPayment(order.providerInvoiceId)
+      } catch (err) {
+        // 200 биш хариуд QPay callback-аа дахин илгээнэ
+        req.log.error({ err }, 'QPay-ийн төлбөр шалгахад алдаа гарлаа')
+        throw unavailable(QPAY_UNAVAILABLE)
+      }
+      if (status === 'paid') await settleOrder(prisma, order)
+      return { ok: true }
+    },
   })
 }
