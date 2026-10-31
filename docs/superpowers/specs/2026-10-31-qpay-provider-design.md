@@ -67,7 +67,7 @@ QPay-ийн callback-д гарын үсэг байхгүй. Тиймээс тү�
 - Захиалга `paid` эсвэл провайдер нь таарахгүй бол QPay-г дуудалгүй 200 `{ ok: true }` буцаана.
 - Бусад үед `checkPayment(providerInvoiceId)` дуудна: `'paid'` бол `settleOrder`, `'pending'` бол юу ч хийхгүй. Аль ч тохиолдолд 200 `{ ok: true }` буцаана.
 - Callback хэзээ ч захиалгыг `failed` болгохгүй.
-- QPay алдаа өгвөл 502 буцаана, QPay дахин оролдоно.
+- QPay алдаа өгвөл 503 `UNAVAILABLE` буцаана, QPay дахин оролдоно.
 - Хуурамч callback ирэхэд хамгийн муу тохиолдолд нэг нэмэлт шалгалт л болно.
 
 ### 5. `GET /orders/:id` дээрх polling
@@ -83,7 +83,7 @@ Fake провайдер `'pending'` буцаадаг тул fake-ийн зан �
 
 ### 6. `POST /orders`
 
-`createInvoice` QPay-ийн алдаа шидвэл захиалга `failed` болно. Хэрэглэгчид 502 `UNKNOWN` "QPay-тэй холбогдож чадсангүй. Дахин оролдоно уу." харагдана, дэлгэрэнгүй нь зөвхөн лог руу явна. `errors.ts`-д 502-ийн туслах байхгүй бол нэмнэ.
+`createInvoice` QPay-ийн алдаа шидвэл захиалга `failed` болно. Хэрэглэгчид 503 `UNAVAILABLE` "QPay-тэй холбогдож чадсангүй. Дахин оролдоно уу." (`unavailable()`) харагдана, дэлгэрэнгүй нь зөвхөн лог руу явна. `ApiErrorCode`-д 502-ийн код байхгүй, шинэ код нэмбэл contract болон frontend өөрчлөгдөх тул одоо байгаа 503-ыг ашиглана.
 
 ## Config (`config.ts`)
 
@@ -130,7 +130,7 @@ Backend-д simulate endpoint нэмэхгүй (YAGNI). `apps/web/server/qpay.ts`
 - 3 секундын дотор дахин poll хийхэд QPay дуудагдахгүй;
 - хугацаа дуусахад сүүлийн шалгалт `'paid'` бол `paid`, `'pending'` бол `failed` болно;
 - polling үед QPay алдаа → `pending`;
-- `createInvoice` алдаа → 502, захиалга `failed`;
+- `createInvoice` алдаа → 503, захиалга `failed`;
 - fake урсгалын бүх хуучин тест ногоон хэвээр.
 
 **`config.test.ts`:** провайдерын enum, sandbox-ийн анхдагч утгууд, дутуу credential, production-д sandbox/fake хориотой, `PUBLIC_API_URL`-ийн https шаардлага.
