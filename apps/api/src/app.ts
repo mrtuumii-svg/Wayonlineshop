@@ -11,6 +11,7 @@ import type { PaymentProvider } from './payments/provider.js'
 import { createQpayProvider } from './payments/qpay.js'
 import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
+import { bookRoutes } from './routes/books.js'
 import { chatRoutes } from './routes/chat.js'
 import { courseRoutes } from './routes/courses.js'
 import { healthRoutes } from './routes/health.js'
@@ -55,7 +56,12 @@ export async function buildApp(
     deps.llm !== undefined
       ? deps.llm
       : config.LLM_API_KEY
-        ? createOpenAiCompatibleLlm({ apiKey: config.LLM_API_KEY, baseUrl: config.LLM_BASE_URL, model: config.LLM_MODEL })
+        ? createOpenAiCompatibleLlm({
+            apiKey: config.LLM_API_KEY,
+            baseUrl: config.LLM_BASE_URL,
+            model: config.LLM_MODEL,
+            timeoutMs: config.LLM_TIMEOUT_MS,
+          })
         : null
   app.decorate('llm', llm)
 
@@ -93,6 +99,7 @@ export async function buildApp(
   await app.register(healthRoutes)
   await app.register(authRoutes)
   await app.register(courseRoutes)
+  await app.register(bookRoutes)
   await app.register(orderRoutes)
   await app.register(meRoutes)
   await app.register(chatRoutes)

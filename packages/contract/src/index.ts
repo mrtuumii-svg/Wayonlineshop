@@ -160,6 +160,40 @@ export interface ChatConversation {
   messages: ChatMessage[]
 }
 
+// ── Ном ────────────────────────────────────────────────────────────────
+
+/** Каталогийн картад. Бүх ном үнэгүй тул үнэ байхгүй. */
+export interface BookSummary {
+  id: string
+  slug: string
+  title: string
+  author: string
+  category: string
+  year: number | null
+  /** Байхгүй бол сайт гарчиг, зохиогчоор нь нүүр зурна */
+  coverUrl: string | null
+}
+
+export interface Book extends BookSummary {
+  description: string
+  language: string
+  /** Албан ёсны үнэгүй хувилбар (шинэ таб-д нээнэ) */
+  readUrl: string
+  /** Холбогдох хичээл */
+  course: { slug: string; title: string; thumbnail: string } | null
+  /** Ижил ангиллын бусад ном */
+  related: BookSummary[]
+}
+
+export interface BookFilter {
+  q?: string
+  category?: string
+  courseId?: string
+  /** 1-ээс эхэлнэ */
+  page?: number
+  limit?: number
+}
+
 // ── Админ ──────────────────────────────────────────────────────────────
 
 export interface AdminUser extends User {

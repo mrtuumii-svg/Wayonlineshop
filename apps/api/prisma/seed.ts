@@ -4,11 +4,11 @@
  * Өгөгдлөөс хасагдсан хичээлийг зориуд устгахгүй: устгавал хэрэглэгчдийн явц cascade-аар алга болно.
  */
 import { pathToFileURL } from 'node:url'
+import { books, courseImage } from '@way/catalog'
 import { createPrisma, type PrismaClient } from '../src/db.js'
 import { courses, instructors, YOUTUBE_IDS } from './seedData.js'
 
 const avatarUrl = (name: string) => `https://i.pravatar.cc/96?u=${encodeURIComponent(name)}`
-const thumbnailUrl = (slug: string) => `https://picsum.photos/seed/${slug}/640/360`
 
 function youtubeIdFor(lessonId: string): string {
   const id = YOUTUBE_IDS[lessonId]
@@ -28,7 +28,8 @@ export async function seed(prisma: PrismaClient): Promise<void> {
     }
 
     for (const { sections, ...c } of courses) {
-      const data = { ...c, thumbnail: thumbnailUrl(c.slug) }
+      // Сэдэвт тохирсон мэргэжлийн зураг (@way/catalog — frontend-ийн mock-той ижил)
+      const data = { ...c, thumbnail: courseImage(c.slug) }
       await tx.course.upsert({ where: { id: c.id }, create: data, update: data })
 
       for (const [si, s] of sections.entries()) {
@@ -50,6 +51,12 @@ export async function seed(prisma: PrismaClient): Promise<void> {
         }
       }
     }
+
+    // Үнэгүй номууд — хичээлүүдийн ДАРАА (courseId нь байгаа хичээл рүү заана)
+    for (const { id, year, coverUrl, courseId, ...b } of books) {
+      const data = { ...b, year: year ?? null, coverUrl: coverUrl ?? null, courseId: courseId ?? null }
+      await tx.book.upsert({ where: { id }, create: { id, ...data }, update: data })
+    }
   }, { timeout: 30_000 })
 }
 
@@ -63,7 +70,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const prisma = createPrisma(url)
   try {
     await seed(prisma)
-    process.stdout.write(`Seed дууслаа: ${courses.length} хичээл, ${instructors.length} багш\n`)
+    process.stdout.write(`Seed дууслаа: ${courses.length} хичээл, ${instructors.length} багш, ${books.length} ном\n`)
   } finally {
     await prisma.$disconnect()
   }

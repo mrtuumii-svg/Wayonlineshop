@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { seed } from '../../prisma/seed.js'
+import { courses } from '../../prisma/seedData.js'
 import { createTestPrisma, resetDb } from '../test/db.js'
 import { buildTestApp } from '../test/testApp.js'
 
@@ -23,6 +24,9 @@ afterAll(async () => {
 
 const get = (url: string, token?: string) =>
   app.inject({ method: 'GET', url, headers: token ? { authorization: `Bearer ${token}` } : {} })
+
+/** Seed-ийн хичээлийн тоо — хичээл нэмэгдэхэд тест эвдрэхгүй */
+const TOTAL = courses.length
 
 const ids = (body: { items: { id: string }[] }) => body.items.map((c) => c.id).sort()
 
@@ -50,8 +54,8 @@ describe('GET /courses', () => {
 
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body).toMatchObject({ total: 8, page: 1, limit: 12 })
-    expect(body.items).toHaveLength(8)
+    expect(body).toMatchObject({ total: TOTAL, page: 1, limit: 12 })
+    expect(body.items).toHaveLength(Math.min(TOTAL, 12))
   })
 
   it('CourseSummary хэлбэртэй — хичээлийн тоо, нийт хугацааг тооцоолно', async () => {
@@ -76,7 +80,7 @@ describe('GET /courses', () => {
   it('жагсаалт видеоны ID, sections, тайлбар, bio-г хэзээ ч тараахгүй', async () => {
     const res = await get('/courses?limit=50')
     expect(res.statusCode).toBe(200)
-    expect(res.json().items).toHaveLength(8)
+    expect(res.json().items).toHaveLength(TOTAL)
 
     for (const key of ['youtubeId', 'sections', 'description', 'bio', 'videoUrl']) {
       expect(res.body).not.toContain(`"${key}"`)
@@ -84,11 +88,11 @@ describe('GET /courses', () => {
   })
 
   it.each([
-    ['category=Дизайн', ['c2', 'c5']],
-    ['level=advanced', ['c4']],
-    ['maxPrice=40000', ['c2', 'c8']],
-    ['category=Програмчлал&level=beginner', ['c1']],
-    ['category=Маркетинг&maxPrice=50000', ['c7']],
+    ['category=Дизайн', ['c17', 'c18', 'c2', 'c5']],
+    ['level=advanced', ['c14', 'c4']],
+    ['maxPrice=40000', ['c12', 'c15', 'c19', 'c2', 'c8']],
+    ['category=Програмчлал&level=beginner', ['c1', 'c10', 'c11', 'c12', 'c15', 'c9']],
+    ['category=Маркетинг&maxPrice=50000', ['c19', 'c7']],
   ])('шүүлт %s', async (query, expected) => {
     const body = (await get(`/courses?${encodeURI(query)}`)).json()
     expect(ids(body)).toEqual(expected)
@@ -98,10 +102,10 @@ describe('GET /courses', () => {
   it.each([
     ['гарчгаар', 'react', ['c1']],
     ['тайлбараар', 'persona', ['c5']],
-    ['багшийн нэрээр', 'номин', ['c6', 'c7']],
-    ['категориор', 'англи хэл', ['c8']],
-    ['кирилл том үсгээр', 'МАРКЕТИНГ', ['c6', 'c7']],
-    ['монгол Ү үсэг том/жижиг', 'ҮНДЭС', ['c2']],
+    ['багшийн нэрээр', 'номин', ['c18', 'c19', 'c6', 'c7']],
+    ['категориор', 'англи хэл', ['c20', 'c8']],
+    ['кирилл том үсгээр', 'МАРКЕТИНГ', ['c19', 'c6', 'c7']],
+    ['монгол Ү үсэг том/жижиг', 'ҮНДЭС', ['c10', 'c14', 'c17', 'c2']],
     ['латин том үсгээр', 'TYPESCRIPT', ['c3']],
     ['хоосон зайтай', '  react  ', ['c1']],
   ])('q хайлт %s', async (_label, q, expected) => {
@@ -121,18 +125,18 @@ describe('GET /courses', () => {
 
   it('хуудаслалт тогтвортой дараалалтай — хуудас давхцахгүй, бүгдийг хамарна', async () => {
     const seen: string[] = []
-    for (let page = 1; page <= 3; page++) {
+    for (let page = 1; page <= Math.ceil(TOTAL / 3); page++) {
       const body = (await get(`/courses?limit=3&page=${page}`)).json()
-      expect(body).toMatchObject({ total: 8, page, limit: 3 })
+      expect(body).toMatchObject({ total: TOTAL, page, limit: 3 })
       seen.push(...body.items.map((c: { id: string }) => c.id))
     }
-    expect(seen).toHaveLength(8)
-    expect(new Set(seen).size).toBe(8)
+    expect(seen).toHaveLength(TOTAL)
+    expect(new Set(seen).size).toBe(TOTAL)
   })
 
   it('хэтэрсэн хуудас → хоосон жагсаалт, нийт тоо хэвээр', async () => {
     const body = (await get('/courses?page=99')).json()
-    expect(body).toMatchObject({ items: [], total: 8, page: 99 })
+    expect(body).toMatchObject({ items: [], total: TOTAL, page: 99 })
   })
 
   it.each(['limit=51', 'limit=0', 'page=0', 'page=1.5', 'level=expert', 'maxPrice=-1', 'maxPrice=abc'])(

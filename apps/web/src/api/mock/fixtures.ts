@@ -1,3 +1,4 @@
+import { courseImage } from '@way/catalog'
 import type { Course, Lesson, Level, Section } from '../types'
 
 /**
@@ -31,7 +32,8 @@ function course(
     price,
     category,
     level,
-    thumbnail: `https://picsum.photos/seed/${slug}/640/360`,
+    // Backend-ийн seed-тэй ижил мэргэжлийн зураг (@way/catalog)
+    thumbnail: courseImage(slug),
     instructor: {
       name: instructor,
       avatar: `https://i.pravatar.cc/96?u=${encodeURIComponent(instructor)}`,

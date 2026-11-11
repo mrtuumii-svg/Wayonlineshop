@@ -25,7 +25,13 @@ export const testConfig = (over: Partial<Config> = {}): Config => ({
   // Тестэд бодит model дуудахгүй — шаардлагатай тест fake `llm`-ийг deps-ээр өгнө
   LLM_BASE_URL: 'http://llm.invalid/v1',
   LLM_MODEL: 'test-model',
+  LLM_TIMEOUT_MS: 30_000,
   CHAT_HISTORY_WINDOW: 4,
+  // Тооцоо шалгахад амар тоонууд
+  LLM_PRICE_INPUT_PER_MTOK: 1,
+  LLM_PRICE_CACHED_PER_MTOK: 0.1,
+  LLM_PRICE_OUTPUT_PER_MTOK: 5,
+  LLM_DAILY_BUDGET_USD: 0,
   ...over,
 })
 

@@ -52,8 +52,23 @@ const envSchema = z.object({
   /** OpenAI-тэй ижил хэлбэрийн API-ийн хаяг. Анхдагч нь Gemini. */
   LLM_BASE_URL: z.url('URL байх ёстой').default('https://generativelanguage.googleapis.com/v1beta/openai/'),
   LLM_MODEL: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+  /**
+   * AI-ийн хариуг хэр удаан хүлээх (ms). Сайт чатын хүсэлтэд 45с хүлээдэг тул үүнээс БАГА байх ёстой —
+   * тэгвэл AI удаан үед сервер түрүүлж "түр завгүй" гэж хариулна, сайт бүдэг "хариу өгсөнгүй" гаргахгүй.
+   */
+  LLM_TIMEOUT_MS: z.coerce.number().int().min(1000, 'дор хаяж 1000 (1 секунд)').max(40_000, 'сайтын 45с-ээс бага байх ёстой').default(30_000),
   /** Sliding window: model-д илгээх өмнөх мессежийн тоо. Түүх бүхэлдээ санд үлдэнэ. 0 = түүхгүй. */
   CHAT_HISTORY_WINDOW: z.coerce.number().int().min(0).max(40).default(4),
+  /**
+   * Model-ийн үнэ, $ / 1 сая token. Үнэ өөрчлөгддөг тул кодонд биш, энд. Анхдагч нь ЖИШЭЭ —
+   * провайдерын албан ёсны үнийн хуудаснаас шалгаж `.env`-д тавина.
+   */
+  LLM_PRICE_INPUT_PER_MTOK: z.coerce.number().min(0).default(0.1),
+  /** Cache-ээс уншсан input-ийн үнэ (ихэвчлэн энгийн input-ийн ~10–25%) */
+  LLM_PRICE_CACHED_PER_MTOK: z.coerce.number().min(0).default(0.025),
+  LLM_PRICE_OUTPUT_PER_MTOK: z.coerce.number().min(0).default(0.4),
+  /** Өнөөдрийн (UTC) нийт зардал үүнээс давбал серверийн log-д анхааруулга бичнэ. 0 = шалгахгүй */
+  LLM_DAILY_BUDGET_USD: z.coerce.number().min(0).default(5),
 })
 
 export interface QpayConfig {
@@ -82,7 +97,12 @@ export interface Config {
   LLM_API_KEY?: string
   LLM_BASE_URL: string
   LLM_MODEL: string
+  LLM_TIMEOUT_MS: number
   CHAT_HISTORY_WINDOW: number
+  LLM_PRICE_INPUT_PER_MTOK: number
+  LLM_PRICE_CACHED_PER_MTOK: number
+  LLM_PRICE_OUTPUT_PER_MTOK: number
+  LLM_DAILY_BUDGET_USD: number
 }
 
 export class ConfigError extends Error {

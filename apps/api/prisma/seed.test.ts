@@ -1,7 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { createTestPrisma, resetDb } from '../src/test/db.js'
 import { seed } from './seed.js'
-import { YOUTUBE_IDS } from './seedData.js'
+import { books, COURSE_IMAGES } from '@way/catalog'
+import { courses, YOUTUBE_IDS } from './seedData.js'
 
 const prisma = createTestPrisma()
 
@@ -14,10 +15,12 @@ beforeEach(async () => {
 })
 
 describe('seed', () => {
-  it('frontend fixtures-тэй ижил 8 хичээл, 4 категори, 6 багш оруулна', async () => {
+  it('20 хичээл, 4 категори, 6 багш, 40 ном оруулна', async () => {
     await seed(prisma)
 
-    expect(await prisma.course.count()).toBe(8)
+    expect(await prisma.course.count()).toBe(courses.length)
+    expect(courses.length).toBe(20)
+    expect(await prisma.book.count()).toBe(40)
     expect(await prisma.instructor.count()).toBe(6)
     const categories = await prisma.course.findMany({ distinct: ['category'], select: { category: true } })
     expect(categories.map((c) => c.category).sort()).toEqual(['Англи хэл', 'Дизайн', 'Маркетинг', 'Програмчлал'])
@@ -29,6 +32,7 @@ describe('seed', () => {
       courses: await prisma.course.count(),
       sections: await prisma.section.count(),
       lessons: await prisma.lesson.count(),
+      books: await prisma.book.count(),
     }
 
     await seed(prisma)
@@ -37,6 +41,7 @@ describe('seed', () => {
       courses: await prisma.course.count(),
       sections: await prisma.section.count(),
       lessons: await prisma.lesson.count(),
+      books: await prisma.book.count(),
     }).toEqual(before)
   })
 
@@ -60,5 +65,19 @@ describe('seed', () => {
     expect(lessons.length).toBeGreaterThan(0)
     for (const l of lessons) expect(l.youtubeId).toMatch(/^[\w-]{11}$/)
     expect(Object.keys(YOUTUBE_IDS).sort()).toEqual(lessons.map((l) => l.id).sort())
+  })
+
+  it('хичээл бүр сэдэвт тохирсон зурагтай (санамсаргүй picsum биш)', async () => {
+    await seed(prisma)
+    const rows = await prisma.course.findMany({ select: { slug: true, thumbnail: true } })
+    for (const c of rows) expect(c.thumbnail, c.slug).toBe(COURSE_IMAGES[c.slug])
+  })
+
+  it('ном бүр байгаа хичээл рүү заана (эсвэл холбоосгүй), slug давтагдахгүй', async () => {
+    await seed(prisma)
+    const courseIds = new Set(courses.map((c) => c.id))
+    for (const b of books) if (b.courseId) expect(courseIds.has(b.courseId), b.slug).toBe(true)
+    expect(new Set(books.map((b) => b.slug)).size).toBe(books.length)
+    expect(await prisma.book.count({ where: { courseId: { not: null } } })).toBe(books.filter((b) => b.courseId).length)
   })
 })

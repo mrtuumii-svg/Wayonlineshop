@@ -25,6 +25,9 @@ export function Header() {
           <NavLink to="/courses" className={(s) => `${navClass(s)} whitespace-nowrap`}>
             Хичээлүүд
           </NavLink>
+          <NavLink to="/books" className={(s) => `${navClass(s)} whitespace-nowrap`}>
+            Номууд
+          </NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={(s) => `${navClass(s)} whitespace-nowrap`}>
               Удирдлага

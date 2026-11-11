@@ -2,6 +2,7 @@ import { lessonCount, progressPercent, resumeLessonId, totalDurationSec } from '
 import type { ApiClient } from '../client'
 import { ApiError } from '../errors'
 import type { Course, CourseSummary, MyCourse, Order, OrderStatus, User } from '../types'
+import { createMockBooks } from './books'
 import { categories, courses } from './fixtures'
 import { readJson, writeJson } from './storage'
 
@@ -139,6 +140,8 @@ export function createMockApi(opts: MockApiOptions): MockApi {
   }
 
   return {
+    ...createMockBooks(courses, wait),
+
     async getCourses(filter = {}) {
       const page = filter.page ?? 1
       const limit = filter.limit ?? PAGE_LIMIT_DEFAULT

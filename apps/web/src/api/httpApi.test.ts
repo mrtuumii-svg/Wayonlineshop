@@ -176,6 +176,17 @@ describe('алдааны хөрвүүлэлт', () => {
     await expectApiError(api.getCategories(), 'UNKNOWN', 'Сервер хариу өгсөнгүй. Дахин оролдоно уу.')
   })
 
+  test('ердийн хүсэлт 15с, чат 45с хүлээнэ — AI удаан үед сайт серверээс түрүүлж бууж өгөхгүй', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout')
+    const { api } = setup([json([]), json({ conversationId: 'x', reply: 'ok' })])
+
+    await api.getCategories()
+    await api.chat({ message: 'hi' })
+
+    expect(timeout.mock.calls.map((c) => c[0])).toEqual([15_000, 45_000])
+    timeout.mockRestore()
+  })
+
   test('амжилттай статустай ч JSON биш хариу → UNKNOWN', async () => {
     const { api } = setup([new Response('not json', { status: 200 })])
     await expectApiError(api.getCategories(), 'UNKNOWN')

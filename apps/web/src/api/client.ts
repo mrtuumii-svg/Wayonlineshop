@@ -4,6 +4,9 @@ import type {
   CourseInput,
   CourseUpdate,
   AuthResult,
+  Book,
+  BookFilter,
+  BookSummary,
   ChatConversation,
   ChatReply,
   ChatRequest,
@@ -44,6 +47,10 @@ export interface ApiClient {
   getCoursesByIds(ids: string[]): Promise<CourseSummary[]>
   getCourse(slug: string): Promise<Course>
   getCategories(): Promise<string[]>
+  /** Үнэгүй номууд — нэвтрэлт шаардахгүй */
+  getBooks(filter?: BookFilter): Promise<Paginated<BookSummary>>
+  getBook(slug: string): Promise<Book>
+  getBookCategories(): Promise<string[]>
   register(input: { name: string; email: string; password: string }): Promise<AuthResult>
   login(input: { email: string; password: string }): Promise<AuthResult>
   getMe(): Promise<User>
