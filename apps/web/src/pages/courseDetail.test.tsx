@@ -42,3 +42,22 @@ test('unknown slug renders 404', async () => {
   renderApp('/courses/nope')
   expect(await screen.findByText('Хуудас олдсонгүй')).toBeInTheDocument()
 })
+
+describe('demo reviews', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  test('hidden unless VITE_DEMO_REVIEWS=true', async () => {
+    renderApp('/courses/react-ekhlel')
+    await screen.findByRole('heading', { name: 'React эхлэл' })
+    expect(screen.queryByRole('heading', { name: /Сэтгэгдэл/ })).not.toBeInTheDocument()
+  })
+
+  test('shown with a demo label and average rating when enabled', async () => {
+    vi.stubEnv('VITE_DEMO_REVIEWS', 'true')
+    renderApp('/courses/react-ekhlel')
+    const section = (await screen.findByRole('heading', { name: /Сэтгэгдэл/ })).closest('section')!
+    expect(section).toHaveTextContent('Demo сэтгэгдэл')
+    expect(section).toHaveTextContent(/\d\.\d/)
+    expect(section.querySelectorAll('li').length).toBeGreaterThan(0)
+  })
+})

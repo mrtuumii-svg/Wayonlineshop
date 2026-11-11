@@ -17,15 +17,27 @@ export interface WebhookRequest {
   headers: Record<string, string | string[] | undefined>
 }
 
+export type PaymentStatus = 'paid' | 'pending'
+
 export interface PaymentProvider {
   /** `Order.provider`-т хадгалагдана */
   readonly name: string
   createInvoice(o: { orderId: string; amount: number }): Promise<Invoice>
   /**
-   * Webhook жинхэнэ эсэхийг шалгана (гарын үсэг, эсвэл провайдерын API-аас дахин асуух).
-   * Хуурамч бол `AppError('VALIDATION')` шиднэ — захиалгын статус хөдлөхгүй.
+   * Гарын үсэгтэй webhook жинхэнэ эсэхийг шалгана. Хуурамч бол `AppError('VALIDATION')`
+   * шиднэ — захиалгын статус хөдлөхгүй. QPay горимд хэрэглэгдэхгүй (callback нь гарын үсэггүй).
    */
   verifyWebhook(req: WebhookRequest): Promise<WebhookResult>
+  /**
+   * Нэхэмжлэх төлөгдсөн эсэхийг провайдерын API-аас асууна. Callback ба polling нь
+   * зөвхөн үүнд итгэнэ. Провайдер хүрэхгүй бол шиднэ.
+   */
+  checkPayment(invoiceId: string): Promise<PaymentStatus>
+  /**
+   * Нэхэмжлэхийг провайдер дээр цуцална — үүний дараа түүгээр төлөх боломжгүй.
+   * Аль хэдийн цуцлагдсан бол амжилттай. Цуцалж чадаагүй (төлөгдсөн, сүлжээ г.м.) бол шиднэ.
+   */
+  cancelInvoice(invoiceId: string): Promise<void>
   /** Апп хаагдахад хүлээгдэж буй ажлыг (таймер г.м.) цуцална */
   close(): void
 }

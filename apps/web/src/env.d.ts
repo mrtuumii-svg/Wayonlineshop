@@ -10,4 +10,6 @@ interface ImportMetaEnv {
   readonly VITE_PAYMENT_MODE?: string
   /** server/qpay.ts plugin тохируулна: 'true' бол QPay sandbox */
   readonly VITE_QPAY_SANDBOX?: string
+  /** 'true' бол хичээлийн хуудсанд зохиомол (Demo) сэтгэгдэл харуулна. Зөвхөн локал хөгжүүлэлтэд */
+  readonly VITE_DEMO_REVIEWS?: string
 }
