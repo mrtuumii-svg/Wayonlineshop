@@ -160,6 +160,33 @@ model Message {
   @@index([conversationId, createdAt])
 }
 
+/// Telemetry (13-р хичээл): model-ийн дуудлага БҮРТ нэг мөр — амжилттай ч, алдаатай ч.
+/// Мессежийн текст энд ОРОХГҮЙ (хувийн мэдээлэл) — хэрэгтэй бол conversationId-аар Message-ээс харна.
+model LlmCall {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  /// FK биш: яриа устсан ч зардлын түүх үлдэнэ. Алдаатай шинэ ярианд null
+  conversationId String?
+  /// Нэг хэрэглэгчийн мессежид хамаарах бүх дуудлагыг холбоно (agent loop-д олон мөр)
+  traceId        String
+  /// Тэр trace доторх хэддүгээр эргэлт (1-ээс)
+  step           Int      @default(1)
+  model          String
+  /// Нийт input, cache-ээс уншсан нь орсон
+  inputTokens    Int      @default(0)
+  cachedTokens   Int      @default(0)
+  outputTokens   Int      @default(0)
+  /// Тухайн үеийн үнээр тооцсон snapshot — үнэ өөрчлөгдсөн ч хуучин мөр хэвээр
+  costUsd        Decimal  @default(0) @db.Decimal(12, 8)
+  durationMs     Int
+  stopReason     String?
+  /// Алдааны төрөл (жишээ нь LlmUnavailableError: HTTP 429). null = амжилттай
+  error          String?
+
+  @@index([createdAt])
+  @@index([conversationId])
+}
+
 /// Үнэгүй ном. Манай сайт номыг хадгалахгүй — readUrl нь албан ёсны үнэгүй хувилбар руу хөтөлнө.
 model Book {
   id          String   @id @default(uuid())

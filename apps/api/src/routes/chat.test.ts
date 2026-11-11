@@ -14,7 +14,7 @@ function fakeLlm(result: string | Error = 'Тийм, байна.') {
     async complete(input) {
       calls.push(input)
       if (result instanceof Error) throw result
-      return { text: result, usage: { inputTokens: 100, outputTokens: 10 } }
+      return { text: result, usage: { inputTokens: 1000, cachedTokens: 800, outputTokens: 10 }, stopReason: 'stop' }
     },
   }
   return { llm, calls }
@@ -87,7 +87,7 @@ describe('POST /chat', () => {
     const saved = await prisma.message.findMany({ where: { conversationId }, orderBy: { createdAt: 'asc' } })
     expect(saved.map((m) => [m.role, m.content, m.inputTokens, m.outputTokens])).toEqual([
       ['user', 'Сайн уу', null, null],
-      ['assistant', 'Сайн байна уу!', 100, 10],
+      ['assistant', 'Сайн байна уу!', 1000, 10],
     ])
   })
 
@@ -249,5 +249,77 @@ describe('POST /chat', () => {
     const res = await ask('Сайн уу')
 
     expect(res.statusCode).toBe(429)
+  })
+})
+
+describe('telemetry (LlmCall)', () => {
+  it('амжилттай дуудлага бүрт token, зардал, хугацаатай нэг мөр бичнэ — мессежийн текстгүй', async () => {
+    const { llm } = fakeLlm('Тийм.')
+    await start(llm)
+
+    const res = await ask('Нууц асуулт')
+
+    const rows = await prisma.llmCall.findMany()
+    expect(rows).toHaveLength(1)
+    const row = rows[0]!
+    expect(row).toMatchObject({
+      conversationId: res.json().conversationId,
+      model: 'test-model',
+      step: 1,
+      inputTokens: 1000,
+      cachedTokens: 800,
+      outputTokens: 10,
+      stopReason: 'stop',
+      error: null,
+    })
+    // testConfig-ийн үнээр: энгийн 200×$1 + cache 800×$0.1 + output 10×$5 = 330 / 1 сая
+    expect(Number(row.costUsd)).toBeCloseTo(0.00033, 8)
+    expect(row.durationMs).toBeGreaterThanOrEqual(0)
+    expect(JSON.stringify(row)).not.toContain('Нууц асуулт')
+  })
+
+  it('алдаатай дуудлагыг ч error-той бичнэ', async () => {
+    const { llm } = fakeLlm(new LlmUnavailableError('LLM түр ажиллахгүй: HTTP 429'))
+    await start(llm)
+
+    expect((await ask('Сайн уу')).statusCode).toBe(503)
+
+    const rows = await prisma.llmCall.findMany()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.error).toContain('HTTP 429')
+    expect(Number(rows[0]?.costUsd)).toBe(0)
+  })
+
+  it('мессеж бүр өөр trace авна', async () => {
+    const { llm } = fakeLlm()
+    await start(llm)
+
+    const first = await ask('1')
+    await ask('2', first.json().conversationId)
+
+    const rows = await prisma.llmCall.findMany()
+    expect(new Set(rows.map((r) => r.traceId)).size).toBe(2)
+  })
+
+  it('system prompt хоёр хүсэлтэд байт бүрээр ижил (cache эвдрэхгүй — огноо, цаг оруулахгүй)', async () => {
+    const { llm, calls } = fakeLlm()
+    await start(llm)
+
+    const first = await ask('1')
+    await ask('2', first.json().conversationId)
+
+    expect(calls[0]?.system).toBe(calls[1]?.system)
+  })
+
+  it('LlmCall бичиж чадахгүй ч хэрэглэгч хариугаа авна', async () => {
+    const { llm } = fakeLlm('Тийм.')
+    await start(llm)
+    const create = vi.spyOn(app.prisma.llmCall, 'create').mockRejectedValueOnce(new Error('db down'))
+
+    const res = await ask('Сайн уу')
+
+    expect(create).toHaveBeenCalled()
+    expect(res.statusCode).toBe(200)
+    expect(res.json().reply).toBe('Тийм.')
   })
 })

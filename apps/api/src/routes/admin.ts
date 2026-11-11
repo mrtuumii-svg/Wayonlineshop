@@ -2,6 +2,7 @@ import type { AdminOrder, AdminUser, SalesReport } from '@way/contract'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { requireAdmin } from '../auth/requireAuth.js'
+import { type LlmMetrics, llmMetrics } from '../chat/telemetry.js'
 import { conflict, notFound, validation } from '../errors.js'
 
 const lessonInput = z.object({
@@ -169,5 +170,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         revenue: i._sum.priceAtPurchase ?? 0,
       })),
     }
+  })
+
+  // AI туслахын 6 тоо (13-р хичээл): сүүлийн N хоногийн зардал, cache, хурд, алдаа. 27-р хичээлд самбар болно.
+  app.get('/admin/llm-metrics', async (req): Promise<LlmMetrics> => {
+    const { days } = parse(z.object({ days: z.coerce.number().int().min(1).max(90).default(1) }), req.query)
+    return llmMetrics(prisma, new Date(Date.now() - days * 24 * 60 * 60 * 1000))
   })
 }

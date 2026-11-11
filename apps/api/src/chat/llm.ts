@@ -10,13 +10,18 @@ export interface ChatMessage {
 }
 
 export interface LlmUsage {
+  /** Нийт input (cache-ээс уншсан нь ОРСОН) — OpenAI хэлбэрийн `prompt_tokens` */
   inputTokens: number
+  /** Үүнээс провайдерын cache-ээс уншсан хэсэг (≈10 дахин хямд). Cache ажиллахгүй бол 0 */
+  cachedTokens: number
   outputTokens: number
 }
 
 export interface LlmResult {
   text: string
   usage: LlmUsage
+  /** Яагаад зогссон: `stop` = өөрөө дуусгасан, `length` = max_tokens-д тулсан */
+  stopReason: string | null
 }
 
 export interface Llm {
@@ -32,8 +37,8 @@ export class LlmUnavailableError extends Error {
 }
 
 interface CompletionResponse {
-  choices?: { message?: { content?: string | null } }[]
-  usage?: { prompt_tokens?: number; completion_tokens?: number }
+  choices?: { message?: { content?: string | null }; finish_reason?: string | null }[]
+  usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } }
 }
 
 const DEFAULT_TIMEOUT_MS = 20_000
@@ -86,8 +91,11 @@ export function createOpenAiCompatibleLlm(opts: {
         text,
         usage: {
           inputTokens: body.usage?.prompt_tokens ?? 0,
+          // Gemini/OpenAI нь давтагдсан эхлэлийг (prefix) автоматаар cache-лдэг — бид зөвхөн хэмжинэ
+          cachedTokens: body.usage?.prompt_tokens_details?.cached_tokens ?? 0,
           outputTokens: body.usage?.completion_tokens ?? 0,
         },
+        stopReason: body.choices?.[0]?.finish_reason ?? null,
       }
     },
   }

@@ -17,12 +17,19 @@ const input = { system: 'SYS', messages: [{ role: 'user' as const, content: 'С�
 
 test('system prompt-ыг эхэнд нэмж, OpenAI хэлбэрээр илгээнэ', async () => {
   const { llm, calls } = setup(
-    ok({ choices: [{ message: { content: ' Сайн байна уу! ' } }], usage: { prompt_tokens: 12, completion_tokens: 5 } }),
+    ok({
+      choices: [{ message: { content: ' Сайн байна уу! ' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 12, completion_tokens: 5, prompt_tokens_details: { cached_tokens: 8 } },
+    }),
   )
 
   const res = await llm.complete(input)
 
-  expect(res).toEqual({ text: 'Сайн байна уу!', usage: { inputTokens: 12, outputTokens: 5 } })
+  expect(res).toEqual({
+    text: 'Сайн байна уу!',
+    usage: { inputTokens: 12, cachedTokens: 8, outputTokens: 5 },
+    stopReason: 'stop',
+  })
   expect(calls[0]?.url).toBe('https://llm.example/v1/chat/completions')
   expect((calls[0]?.init.headers as Record<string, string>).Authorization).toBe('Bearer k-123')
   expect(JSON.parse(calls[0]?.init.body as string)).toEqual({
@@ -58,5 +65,7 @@ test('хоосон хариу нь түр зуурын алдаа, usage бай�
   await expect(empty.llm.complete(input)).rejects.toBeInstanceOf(LlmUnavailableError)
 
   const noUsage = setup(ok({ choices: [{ message: { content: 'Тийм' } }] }))
-  expect((await noUsage.llm.complete(input)).usage).toEqual({ inputTokens: 0, outputTokens: 0 })
+  const res = await noUsage.llm.complete(input)
+  expect(res.usage).toEqual({ inputTokens: 0, cachedTokens: 0, outputTokens: 0 })
+  expect(res.stopReason).toBeNull()
 })

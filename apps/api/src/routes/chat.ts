@@ -1,8 +1,10 @@
 import type { ChatConversation, ChatReply } from '@way/contract'
+import { randomUUID } from 'node:crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { LlmUnavailableError } from '../chat/llm.js'
 import { buildSystemPrompt } from '../chat/prompt.js'
+import { checkDailyBudget, costUsd, recordLlmCall } from '../chat/telemetry.js'
 import { notFound, unavailable, validation } from '../errors.js'
 
 /** Хариултын дээд хязгаар (token). System prompt-ын "1–3 өгүүлбэр"-ийн хамгаалалт. */
@@ -52,7 +54,14 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const askedAt = new Date()
+    // System prompt нь хүсэлт бүрт ИЖИЛ байх ёстой (огноо, цаг ОРУУЛАХГҮЙ) — тэгвэл провайдер
+    // эхлэлийг cache-лж ≈10 дахин хямд уншина. Хувьсах зүйл зөвхөн messages-ийн төгсгөлд.
     const system = await buildSystemPrompt(app.prisma)
+    const model = app.config.LLM_MODEL
+    // Нэг хэрэглэгчийн мессежийн бүх дуудлагыг холбох дугаар (trace)
+    const traceId = randomUUID()
+    const started = performance.now()
+    const elapsed = () => Math.round(performance.now() - started)
     let result
     try {
       result = await app.llm.complete({
@@ -61,14 +70,23 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
         maxTokens: MAX_TOKENS,
       })
     } catch (err) {
+      await recordLlmCall(app.prisma, req.log, {
+        conversationId: conversationId ?? null,
+        traceId,
+        model,
+        durationMs: elapsed(),
+        error: `${(err as Error).name}: ${(err as Error).message}`.slice(0, 300),
+      })
       if (err instanceof LlmUnavailableError) {
         req.log.warn({ err }, 'LLM түр ажиллахгүй')
         throw unavailable(BUSY_MESSAGE)
       }
       throw err
     }
-    const { text, usage } = result
-    req.log.info({ model: app.config.LLM_MODEL, ...usage }, 'chat usage')
+    const durationMs = elapsed()
+    const { text, usage, stopReason } = result
+    const cost = costUsd(usage, app.config)
+    req.log.info({ model, ...usage, costUsd: cost, durationMs }, 'chat usage')
 
     // Model амжилттай хариулсны дараа л хадгална — алдаа гарвал хагас яриа үлдэхгүй
     const messages = {
@@ -86,6 +104,17 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const saved = conversationId
       ? await app.prisma.conversation.update({ where: { id: conversationId }, data: { messages }, select: { id: true } })
       : await app.prisma.conversation.create({ data: { messages }, select: { id: true } })
+
+    await recordLlmCall(app.prisma, req.log, {
+      conversationId: saved.id,
+      traceId,
+      model,
+      usage,
+      costUsd: cost,
+      durationMs,
+      stopReason,
+    })
+    await checkDailyBudget(app.prisma, req.log, app.config.LLM_DAILY_BUDGET_USD)
 
     return { conversationId: saved.id, reply: text }
   })
